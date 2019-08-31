@@ -1,5 +1,7 @@
 #include "Window.h"
 #include "Application.h"
+#include "PaintMessage.h"
+#include "Graphics.h"
 
 #include <windows.h> // for Win32 API
 
@@ -15,6 +17,8 @@ class Window::Impl
 private:
 	HWND _hwnd{ nullptr };
 	bool _willDestroyPostQuit{ false };
+	MessageHandler _messageHandler{ nullptr };
+	graphics::Canvas _canvas;
 
 	static const wchar_t* ClassName() { return  L"DirectUIWindow"; }
 
@@ -22,15 +26,15 @@ private:
 	{
 		switch ( type )
 		{
-		case WindowType::Main: return WS_OVERLAPPEDWINDOW;
-		case WindowType::Popup: return WS_POPUPWINDOW;
-		case WindowType::Child: return WS_CHILDWINDOW;
-		default: return 0;
+			case WindowType::Main: return WS_OVERLAPPEDWINDOW;
+			case WindowType::Popup: return WS_POPUPWINDOW;
+			case WindowType::Child: return WS_CHILDWINDOW;
+			default: return 0;
 		}
 	}
 
 public:
-	Impl( WindowType type, const String& name, const Rect& rc, Window* parentWindow )
+	Impl( WindowType type, const String& name, const Rect& rc, Window* parentWindow, MessageHandler messageHandler )
 	{
 		RegisterOnce();
 
@@ -40,6 +44,7 @@ public:
 		if ( parentWindow && parentWindow->_impl )
 			parentHwnd = parentWindow->_impl->_hwnd;
 
+		_messageHandler = messageHandler;
 		_hwnd = ::CreateWindowExW( 0U, ClassName(), name.c_str(), style,
 			rc.x, rc.y, rc.w, rc.h,
 			parentHwnd, nullptr, ProgramInstance(), this );
@@ -52,7 +57,7 @@ public:
 
 	void Show()
 	{
-		::ShowWindow( _hwnd, SW_SHOWDEFAULT );
+		::ShowWindow( _hwnd, SW_SHOW );
 	}
 
 	int MessageLoop()
@@ -75,7 +80,30 @@ private:
 		if ( message == WM_DESTROY && _willDestroyPostQuit )
 		{
 			::PostQuitMessage( 0 );
-			return 0;
+			return FALSE;
+		}
+
+		switch ( message )
+		{
+			case WM_ERASEBKGND:
+			{
+				return TRUE;
+			} break;
+			case WM_PAINT:
+			{
+				_canvas.BeginPaint( _hwnd );
+
+				if ( _messageHandler )
+				{
+					_messageHandler( PaintMessage{ _canvas } );
+				}
+
+				_canvas.EndPaint();
+
+				return FALSE;
+			} break;
+			default:
+				break;
 		}
 
 		return ::DefWindowProcW( _hwnd, message, wParam, lParam );
@@ -137,9 +165,9 @@ private:
 	}
 };
 
-Window::Window( WindowType type, const String& name, const Rect& rc, Window* parentWindow )
+Window::Window( WindowType type, const String& name, const Rect& rc, Window* parentWindow, MessageHandler messageHandler )
 {
-	_impl.reset( new Impl{ type, name, rc, parentWindow } );
+	_impl.reset( new Impl{ type, name, rc, parentWindow, messageHandler } );
 }
 
 Window::~Window()

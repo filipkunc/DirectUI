@@ -29,5 +29,14 @@
     <ClInclude Include="Graphics.h">
       <Filter>Source</Filter>
     </ClInclude>
+    <ClInclude Include="Message.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="PaintMessage.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="CoreTypes.h">
+      <Filter>Source</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

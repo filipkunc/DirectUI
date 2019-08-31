@@ -1,7 +1,10 @@
 #pragma once
 
+#include "CoreTypes.h"
+
 #include <memory> // for std::unique_ptr
 #include <string> // for std::wstring
+#include <functional> // for std::function
 
 namespace directui
 {
@@ -23,6 +26,10 @@ enum class WindowType
 	Child
 };
 
+class Message;
+
+using MessageHandler = std::function<void( const Message& message )>;
+
 class Window
 {
 private:
@@ -31,7 +38,7 @@ private:
 	class Impl;
 	std::unique_ptr<Impl> _impl;
 public:
-	Window( WindowType type, const String& name, const Rect& rc, Window* parentWindow = nullptr );
+	Window( WindowType type, const String& name, const Rect& rc, Window* parentWindow, MessageHandler messageHandler );
 	~Window();
 
 	void Show();

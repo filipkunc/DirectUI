@@ -25,7 +25,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
+    <ClInclude Include="CoreTypes.h" />
     <ClInclude Include="Graphics.h" />
+    <ClInclude Include="Message.h" />
+    <ClInclude Include="PaintMessage.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

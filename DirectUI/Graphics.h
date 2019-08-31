@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CoreTypes.h"
 #include <memory> // for std::unique_ptr
 
 namespace graphics
@@ -35,7 +36,7 @@ public:
 	Canvas();
 	~Canvas();
 
-	void BeginPaint();
+	void BeginPaint( directui::Handle windowHandle );
 	void EndPaint();
 
 	void Clear( Color color );
