@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source">
+      <UniqueIdentifier>{24cdb604-8857-4d7a-b80e-5cf4fca5b6b0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Test">
+      <UniqueIdentifier>{0fccfb2a-c5c2-4476-9f36-71ce7e611557}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Window+Aplication.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Test.cpp">
+      <Filter>Test</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Window.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Application.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
