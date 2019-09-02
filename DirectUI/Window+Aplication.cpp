@@ -2,7 +2,9 @@
 #include "Application.h"
 #include "PaintMessage.h"
 #include "Graphics.h"
+#include "DxGraphics.h"
 
+#define NOMINMAX
 #include <windows.h> // for Win32 API
 
 #ifdef _MSC_VER
@@ -38,7 +40,7 @@ public:
 	{
 		RegisterOnce();
 
-		DWORD style = WindowStyleFromType( type );
+		DWORD style = WindowStyleFromType( type ) | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
 		HWND parentHwnd = nullptr;
 
 		if ( parentWindow && parentWindow->_impl )
@@ -182,17 +184,33 @@ void Window::Show()
 
 class Application::Impl
 {
-
+private:
+	graphics::dx::Device _device;
+public:
+	graphics::dx::Device& GetDevice() { return _device; }
 };
 
 Application::Application()
 {
 	_impl.reset( new Impl{} );
+	Instance() = this;
 }
 
 Application::~Application()
 {
 	_impl.reset();
+	Instance() = nullptr;
+}
+
+Application*& Application::Instance()
+{
+	static Application* _instance{ nullptr };
+	return _instance;
+}
+
+graphics::dx::Device& Application::GetDevice()
+{
+	return _impl->GetDevice();
 }
 
 int Application::Run( Window& window )

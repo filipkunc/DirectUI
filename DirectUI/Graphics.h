@@ -13,6 +13,13 @@ struct Point
 	Point( float x, float y ) : x{ x }, y{ y } {}
 };
 
+struct Size
+{
+	float w, h;
+	Size() : w{ 0 }, h{ 0 } {}
+	Size( float w, float h ) : w{ w }, h{ h } {}
+};
+
 struct Rect
 {
 	float x, y, w, h;

@@ -1,6 +1,6 @@
 #include "Graphics.h"
-
-#include <windows.h> // for Win32 API
+#include "DxGraphics.h"
+#include "Application.h"
 
 namespace graphics
 {
@@ -11,11 +11,27 @@ private:
 	HWND _hwnd;
 	HDC _hdc;
 	PAINTSTRUCT _ps;
+	dx::DeviceContext _deviceContext;
 public:
+	Impl()
+		: _hwnd{ nullptr }
+		, _hdc{ nullptr }
+		, _ps{}
+		, _deviceContext{ directui::Application::Instance()->GetDevice() }
+	{
+	}
+
+	~Impl()
+	{
+
+	}
+
 	void BeginPaint( directui::Handle windowHandle )
 	{
 		_hwnd = static_cast< HWND >( windowHandle );
+		_deviceContext.Resize( _hwnd );
 		_hdc = ::BeginPaint( _hwnd, &_ps );
+		_deviceContext.BeginDraw();
 	}
 	
 	RECT ConvertRect( Rect rc )
@@ -38,22 +54,33 @@ public:
 
 	void EndPaint()
 	{
+		_deviceContext.EndDraw();
 		::EndPaint( _hwnd, &_ps );
 	}
 
 	void Clear( Color color )
 	{
-		auto gdiBrush = ::CreateSolidBrush( ConvertColor( color ) );
+		/*auto gdiBrush = ::CreateSolidBrush( ConvertColor( color ) );
 		::FillRect( _hdc, &_ps.rcPaint, gdiBrush );
-		::DeleteObject( gdiBrush );
+		::DeleteObject( gdiBrush );*/
+
+		_deviceContext._d2dContext->Clear( D2D1::ColorF( color.r, color.g, color.b, color.a ) );
 	}
 
 	void FillSolidRect( Color color, Rect rect )
 	{
-		auto gdiBrush = ::CreateSolidBrush( ConvertColor( color ) );
+		/*auto gdiBrush = ::CreateSolidBrush( ConvertColor( color ) );
 		auto gdiRect = ConvertRect( rect );
 		::FillRect( _hdc, &gdiRect, gdiBrush );
-		::DeleteObject( gdiBrush );
+		::DeleteObject( gdiBrush );*/
+
+		dx::wrl::ComPtr<ID2D1SolidColorBrush> brush;
+		_deviceContext._d2dContext->CreateSolidColorBrush(
+			D2D1::ColorF( color.r, color.g, color.b, color.a ),
+			&brush );
+		_deviceContext._d2dContext->FillRectangle(
+			D2D1::RectF( rect.x, rect.y, rect.x + rect.w, rect.y + rect.h ),
+			brush.Get() );
 	}
 };
 
