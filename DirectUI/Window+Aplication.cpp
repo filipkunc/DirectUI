@@ -1,8 +1,8 @@
 #include "Window.h"
 #include "Application.h"
-#include "PaintMessage.h"
+#include "Message.h"
+#include "DrawMessage.h"
 #include "Graphics.h"
-#include "DxGraphics.h"
 
 #define NOMINMAX
 #include <windows.h> // for Win32 API
@@ -20,7 +20,7 @@ private:
 	HWND _hwnd{ nullptr };
 	bool _willDestroyPostQuit{ false };
 	MessageHandler _messageHandler{ nullptr };
-	graphics::Canvas _canvas;
+	std::unique_ptr<graphics::IDeviceContext> _deviceContext;
 
 	static const wchar_t* ClassName() { return  L"DirectUIWindow"; }
 
@@ -36,7 +36,7 @@ private:
 	}
 
 public:
-	Impl( WindowType type, const String& name, const Rect& rc, Window* parentWindow, MessageHandler messageHandler )
+	Impl( WindowType type, graphics::IDevice& device, const String& name, const Rect& rc, Window* parentWindow, MessageHandler messageHandler )
 	{
 		RegisterOnce();
 
@@ -50,6 +50,8 @@ public:
 		_hwnd = ::CreateWindowExW( 0U, ClassName(), name.c_str(), style,
 			rc.x, rc.y, rc.w, rc.h,
 			parentHwnd, nullptr, ProgramInstance(), this );
+		
+		_deviceContext = device.CreateDeviceContext();
 	}
 
 	~Impl()
@@ -93,14 +95,14 @@ private:
 			} break;
 			case WM_PAINT:
 			{
-				_canvas.BeginPaint( _hwnd );
+				_deviceContext->BeginDraw( _hwnd );
 
 				if ( _messageHandler )
 				{
-					_messageHandler( PaintMessage{ _canvas } );
+					_messageHandler( DrawMessage{ *_deviceContext } );
 				}
 
-				_canvas.EndPaint();
+				_deviceContext->EndDraw();
 
 				return FALSE;
 			} break;
@@ -167,9 +169,9 @@ private:
 	}
 };
 
-Window::Window( WindowType type, const String& name, const Rect& rc, Window* parentWindow, MessageHandler messageHandler )
+Window::Window( WindowType type, graphics::IDevice& device, const String& name, const Rect& rc, Window* parentWindow, MessageHandler messageHandler )
 {
-	_impl.reset( new Impl{ type, name, rc, parentWindow, messageHandler } );
+	_impl.reset( new Impl{ type, device, name, rc, parentWindow, messageHandler } );
 }
 
 Window::~Window()
@@ -184,10 +186,6 @@ void Window::Show()
 
 class Application::Impl
 {
-private:
-	graphics::dx::Device _device;
-public:
-	graphics::dx::Device& GetDevice() { return _device; }
 };
 
 Application::Application()
@@ -206,11 +204,6 @@ Application*& Application::Instance()
 {
 	static Application* _instance{ nullptr };
 	return _instance;
-}
-
-graphics::dx::Device& Application::GetDevice()
-{
-	return _impl->GetDevice();
 }
 
 int Application::Run( Window& window )

@@ -35,13 +35,13 @@
     <ClInclude Include="Message.h">
       <Filter>Source</Filter>
     </ClInclude>
-    <ClInclude Include="PaintMessage.h">
-      <Filter>Source</Filter>
-    </ClInclude>
     <ClInclude Include="CoreTypes.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="DxGraphics.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="DrawMessage.h">
       <Filter>Source</Filter>
     </ClInclude>
   </ItemGroup>

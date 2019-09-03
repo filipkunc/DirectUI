@@ -30,7 +30,7 @@
     <ClInclude Include="DxGraphics.h" />
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="Message.h" />
-    <ClInclude Include="PaintMessage.h" />
+    <ClInclude Include="DrawMessage.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

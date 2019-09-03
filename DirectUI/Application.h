@@ -2,8 +2,6 @@
 
 #include <memory> // for std::unique_ptr
 
-namespace graphics::dx { class Device; }
-
 namespace directui
 {
 
@@ -20,7 +18,6 @@ public:
 
 	static Application*& Instance();
 
-	graphics::dx::Device& GetDevice();
 	int Run( Window& window );
 };
 

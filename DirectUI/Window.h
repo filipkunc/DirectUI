@@ -6,6 +6,8 @@
 #include <string> // for std::wstring
 #include <functional> // for std::function
 
+namespace graphics { class IDevice; }
+
 namespace directui
 {
 
@@ -38,7 +40,7 @@ private:
 	class Impl;
 	std::unique_ptr<Impl> _impl;
 public:
-	Window( WindowType type, const String& name, const Rect& rc, Window* parentWindow, MessageHandler messageHandler );
+	Window( WindowType type, graphics::IDevice& device, const String& name, const Rect& rc, Window* parentWindow, MessageHandler messageHandler );
 	~Window();
 
 	void Show();

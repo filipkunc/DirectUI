@@ -1,6 +1,18 @@
+// Based on Dynamic DPI sample from https://github.com/microsoft/Windows-classic-samples/tree/master/Samples/DynamicDPI
 #include "DxGraphics.h"
 
 #include <algorithm>
+
+#define NOMINMAX
+#include <windows.h> // for Win32 API
+
+#include <wrl.h> // for ComPtr
+#include <wrl/client.h>
+#include <d3d11_2.h>
+#include <d2d1_2.h>
+#include <dwrite_2.h>
+#include <wincodec.h>
+#include <DirectXMath.h>
 
 #pragma comment(lib, "shcore.lib")
 #pragma comment(lib, "Comctl32.lib")
@@ -11,6 +23,78 @@
 
 namespace graphics::dx
 {
+
+namespace wrl = Microsoft::WRL;
+
+struct CoInit
+{
+	CoInit();
+	~CoInit();
+};
+
+class Device : public IDevice
+{
+private:
+	friend class DeviceContext;
+
+	CoInit _coInit;
+
+	// Direct3D
+	wrl::ComPtr<ID3D11Device2>        _d3dDevice;
+	wrl::ComPtr<ID3D11DeviceContext2> _d3dContext;
+	D3D_FEATURE_LEVEL                 _d3dFeatureLevel;
+
+	// Direct2D
+	wrl::ComPtr<ID2D1Factory2>       _d2dFactory;
+	wrl::ComPtr<ID2D1Device1>        _d2dDevice;
+
+	// DirectWrite + Windows Imaging Component
+	wrl::ComPtr<IDWriteFactory2>     _dwriteFactory;
+	wrl::ComPtr<IWICImagingFactory2> _wicFactory;
+
+	void CreateIndependent();
+	void CreateDevice();
+public:
+	Device();
+	virtual ~Device();
+
+	std::unique_ptr<IDeviceContext> CreateDeviceContext() override;
+};
+
+class DeviceContext : public IDeviceContext
+{
+private:
+	Device& _device;
+	// DXGI
+	wrl::ComPtr<IDXGISwapChain1>		_swapChain;
+
+	// Direct3D
+	wrl::ComPtr<ID3D11RenderTargetView> _d3dRenderTargetView;
+	wrl::ComPtr<ID3D11DepthStencilView> _d3dDepthStencilView;
+	D3D11_VIEWPORT                      _viewport;
+	Size                                _d3dRenderTargetSize;
+
+	// Direct2D
+	wrl::ComPtr<ID2D1DeviceContext1>	_d2dContext;
+	wrl::ComPtr<ID2D1Bitmap1>			_d2dTargetBitmap;
+
+	HWND _hwnd;
+	HDC _hdc;
+	PAINTSTRUCT _ps;
+
+	bool Present();
+public:
+	DeviceContext( Device& device );
+	virtual ~DeviceContext();
+
+	void Resize( HWND hwnd );
+	
+	void BeginDraw( directui::Handle windowHandle ) override;
+	void EndDraw() override;
+
+	void Clear( Color color ) override;
+	void FillSolidRect( Color color, Rect rect ) override;
+};
 
 inline void ThrowIfFailed( HRESULT hr )
 {
@@ -49,6 +133,11 @@ Device::Device()
 Device::~Device()
 {
 
+}
+
+std::unique_ptr<IDeviceContext> Device::CreateDeviceContext()
+{
+	return std::unique_ptr<IDeviceContext>( new DeviceContext( *this ) );
 }
 
 void Device::CreateIndependent()
@@ -221,6 +310,17 @@ DeviceContext::~DeviceContext()
 
 void DeviceContext::Resize( HWND hwnd )
 {
+	RECT rc;
+	::GetClientRect( hwnd, &rc );
+
+	auto width = static_cast< float >( std::max( 1L, rc.right ) );
+	auto height = static_cast< float >( std::max( 1L, rc.bottom ) );
+
+	if ( _hwnd == hwnd && width == _d3dRenderTargetSize.w && height == _d3dRenderTargetSize.h )
+		return;
+
+	_hwnd = hwnd;
+
 	// Clear the previous window size specific context.
 	ID3D11RenderTargetView* nullViews[] = { nullptr };
 	_device._d3dContext->OMSetRenderTargets( ARRAYSIZE( nullViews ), nullViews, nullptr );
@@ -229,13 +329,9 @@ void DeviceContext::Resize( HWND hwnd )
 	_d2dTargetBitmap = nullptr;
 	_d3dDepthStencilView = nullptr;
 	_device._d3dContext->Flush();
-
-	_hwnd = hwnd;
-	RECT rc;
-	::GetClientRect( _hwnd, &rc );
-
-	_d3dRenderTargetSize.w = static_cast< float >( std::max( 1L, rc.right ) );
-	_d3dRenderTargetSize.h = static_cast< float >( std::max( 1L, rc.bottom ) );
+	
+	_d3dRenderTargetSize.w = width;
+	_d3dRenderTargetSize.h = height;
 
 	if ( _swapChain != nullptr )
 	{
@@ -356,16 +452,6 @@ void DeviceContext::Resize( HWND hwnd )
 		)
 	);
 
-	// Set the 3D rendering viewport to target the entire window.
-	_viewport = CD3D11_VIEWPORT(
-		0.0f,
-		0.0f,
-		_d3dRenderTargetSize.w,
-		_d3dRenderTargetSize.h
-	);
-
-	_device._d3dContext->RSSetViewports( 1, &_viewport );
-
 	// Create a Direct2D target bitmap associated with the
 	// swap chain back buffer and set it as the current target.
 	D2D1_BITMAP_PROPERTIES1 bitmapProperties =
@@ -390,17 +476,6 @@ void DeviceContext::Resize( HWND hwnd )
 	);
 
 	_d2dContext->SetTarget( _d2dTargetBitmap.Get() );
-}
-
-void DeviceContext::BeginDraw()
-{
-	_d2dContext->BeginDraw();
-}
-
-void DeviceContext::EndDraw()
-{
-	auto hr = _d2dContext->EndDraw();
-	Present();
 }
 
 bool DeviceContext::Present()
@@ -433,6 +508,54 @@ bool DeviceContext::Present()
 		ThrowIfFailed( hr );
 	}
 	return true;
+}
+
+void DeviceContext::BeginDraw(directui::Handle windowHandle)
+{
+	Resize( static_cast< HWND >( windowHandle ) );
+
+	_hdc = ::BeginPaint( _hwnd, &_ps );
+
+	// Set the 3D rendering viewport to target the entire window.
+	_viewport = CD3D11_VIEWPORT(
+		0.0f,
+		0.0f,
+		_d3dRenderTargetSize.w,
+		_d3dRenderTargetSize.h
+	);
+
+	_device._d3dContext->RSSetViewports( 1, &_viewport );
+
+	_d2dContext->BeginDraw();
+}
+
+void DeviceContext::EndDraw()
+{
+	auto hr = _d2dContext->EndDraw();
+	Present();
+
+	::EndPaint( _hwnd, &_ps );
+}
+
+void DeviceContext::Clear( Color color )
+{
+	_d2dContext->Clear( D2D1::ColorF( color.r, color.g, color.b, color.a ) );
+}
+
+void DeviceContext::FillSolidRect( Color color, Rect rect )
+{
+	wrl::ComPtr<ID2D1SolidColorBrush> brush;
+	_d2dContext->CreateSolidColorBrush(
+		D2D1::ColorF( color.r, color.g, color.b, color.a ),
+		&brush );
+	_d2dContext->FillRectangle(
+		D2D1::RectF( rect.x, rect.y, rect.x + rect.w, rect.y + rect.h ),
+		brush.Get() );
+}
+
+std::unique_ptr<IDevice> CreateDevice()
+{
+	return std::unique_ptr<IDevice>( new Device() );
 }
 
 } // namespace graphics::dx

@@ -2,6 +2,7 @@
 
 #include "CoreTypes.h"
 #include <memory> // for std::unique_ptr
+#include <functional> // for std::function
 
 namespace graphics
 {
@@ -34,20 +35,26 @@ struct Color
 	Color( float r, float g, float b, float a ) : r{ r }, g{ g }, b{ b }, a{ a } {}
 };
 
-class Canvas
+class IDeviceContext;
+
+class IDevice
 {
-private:
-	class Impl;
-	std::unique_ptr<Impl> _impl;
 public:
-	Canvas();
-	~Canvas();
+	virtual ~IDevice() {}
 
-	void BeginPaint( directui::Handle windowHandle );
-	void EndPaint();
+	virtual std::unique_ptr<IDeviceContext> CreateDeviceContext() = 0;
+};
 
-	void Clear( Color color );
-	void FillSolidRect( Color color, Rect rect );
+class IDeviceContext
+{
+public:
+	virtual ~IDeviceContext() {}
+
+	virtual void BeginDraw( directui::Handle windowHandle ) = 0;
+	virtual void EndDraw() = 0;
+
+	virtual void Clear( Color color ) = 0;
+	virtual void FillSolidRect( Color color, Rect rect ) = 0;
 };
 
 } // namespace graphics
