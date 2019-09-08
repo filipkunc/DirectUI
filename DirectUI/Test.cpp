@@ -2,44 +2,55 @@
 #include "Application.h"
 #include "Message.h"
 #include "DrawMessage.h"
+#include "MouseMesage.h"
 #include "Graphics.h"
 #include "DxGraphics.h"
 
 int main()
 {
-	directui::Application app;
+	using namespace directui;
+	using namespace graphics;
 
-	auto device = graphics::dx::CreateDevice();
+	Application app;
 
-	directui::Window mainWindow{ directui::WindowType::Main, *device, L"Test App", directui::Rect{ 100, 100, 640, 480 }, nullptr, 
-		[] ( const directui::Message& message ) {
-			if ( auto dm = message.As<directui::DrawMessage>() )
+	auto device = dx::CreateDevice();
+
+	Window mainWindow{ WindowType::Main, *device, L"Test App", RectPx{ 100, 100, 640, 480 }, nullptr, 
+		[] ( const Message& message ) {
+			if ( auto dm = message.As<DrawMessage>() )
 			{
 				auto& dc = dm->GetDeviceContext();
-				dc.Clear( graphics::Color{ 0.8f, 0.8f, 0.8f, 1 } );
+				dc.Clear( ColorF{ 0.8f, 0.8f, 0.8f, 1 } );
 			}
 		}	
 	};
 	mainWindow.Show();
 
-	directui::Window popupWindow{ directui::WindowType::Popup, *device, L"Test Popup", directui::Rect{ 40, 40, 100, 30 }, nullptr,
-		[] ( const directui::Message& message ) {
-			if ( auto dm = message.As<directui::DrawMessage>() )
+	Window popupWindow{ WindowType::Popup, *device, L"Test Popup", RectPx{ 40, 40, 100, 30 }, nullptr,
+		[] ( const Message& message ) {
+			if ( auto dm = message.As<DrawMessage>() )
 			{
 				auto& dc = dm->GetDeviceContext();
-				dc.Clear( graphics::Color{ 0.8f, 0.84f, 0.95f, 1 } );
+				dc.Clear( ColorF{ 0.8f, 0.84f, 0.95f, 1 } );
 			}
 		}
 	};
 	popupWindow.Show();
 
-	directui::Window childWindow{ directui::WindowType::Child, *device, L"Test Child", directui::Rect{ 50, 50, 80, 20}, &mainWindow,
-		[] ( const directui::Message& message ) {
-			if ( auto dm = message.As<directui::DrawMessage>() )
+	PointPx mousePos;
+
+	Window childWindow{ WindowType::Child, *device, L"Test Child", RectPx{ 50, 50, 80, 20 }, &mainWindow,
+		[&childWindow, &mousePos] ( const Message& message ) {
+			if ( auto dm = message.As<DrawMessage>() )
 			{
 				auto& dc = dm->GetDeviceContext();
-				dc.FillSolidRect( graphics::Color{ 1, 0, 0, 1 }, graphics::Rect{ 0, 0, 80, 20 } );
-				dc.FillSolidRect( graphics::Color{ 0, 0.6f, 0, 0.3f }, graphics::Rect{ 20, 0, 80, 20 } );
+				dc.FillSolidRect( ColorF{ 1, 0, 0, 1 }, RectF{ 0, 0, 80, 20 } );
+				dc.FillSolidRect( ColorF{ 0, 0.6f, 0, 0.3f }, RectF{ static_cast< float >( mousePos.x ), static_cast< float >( mousePos.y ), 5, 5 } );
+			}
+			else if ( auto mm = message.As<MouseMessage>() )
+			{
+				mousePos = mm->GetPosition();
+				childWindow.Redraw();
 			}
 		}
 	};

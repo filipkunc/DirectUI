@@ -13,19 +13,17 @@ namespace directui
 
 using String = std::wstring;
 
-struct Rect
-{
-	int x, y, w, h;
-
-	Rect() : x{ 0 }, y{ 0 }, w{ 0 }, h{ 0 } {}
-	Rect( int x, int y, int w, int h ) : x{ x }, y{ y }, w{ w }, h{ h } {}
-};
-
 enum class WindowType
 {
 	Main,
 	Popup,
 	Child
+};
+
+enum class WindowRedraw
+{
+	Invalidate,
+	Now
 };
 
 class Message;
@@ -40,10 +38,11 @@ private:
 	class Impl;
 	std::unique_ptr<Impl> _impl;
 public:
-	Window( WindowType type, graphics::IDevice& device, const String& name, const Rect& rc, Window* parentWindow, MessageHandler messageHandler );
+	Window( WindowType type, graphics::IDevice& device, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler );
 	~Window();
 
 	void Show();
+	void Redraw( WindowRedraw redraw = WindowRedraw::Invalidate );
 };
 
 }

@@ -2,10 +2,14 @@
 #include "Application.h"
 #include "Message.h"
 #include "DrawMessage.h"
+#include "MouseMesage.h"
 #include "Graphics.h"
+
+#include <unordered_map>
 
 #define NOMINMAX
 #include <windows.h> // for Win32 API
+#include <windowsx.h> // for GET_X_LPARAM, GET_Y_LPARAM
 
 #ifdef _MSC_VER
 #pragma comment(linker, "/subsystem:windows /ENTRY:mainCRTStartup")
@@ -36,7 +40,7 @@ private:
 	}
 
 public:
-	Impl( WindowType type, graphics::IDevice& device, const String& name, const Rect& rc, Window* parentWindow, MessageHandler messageHandler )
+	Impl( WindowType type, graphics::IDevice& device, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler )
 	{
 		RegisterOnce();
 
@@ -48,7 +52,7 @@ public:
 
 		_messageHandler = messageHandler;
 		_hwnd = ::CreateWindowExW( 0U, ClassName(), name.c_str(), style,
-			rc.x, rc.y, rc.w, rc.h,
+			rcPx.x, rcPx.y, rcPx.w, rcPx.h,
 			parentHwnd, nullptr, ProgramInstance(), this );
 		
 		_deviceContext = device.CreateDeviceContext();
@@ -62,6 +66,11 @@ public:
 	void Show()
 	{
 		::ShowWindow( _hwnd, SW_SHOW );
+	}
+
+	void Redraw( WindowRedraw redraw )
+	{
+		::RedrawWindow( _hwnd, nullptr, nullptr, redraw == WindowRedraw::Invalidate ? RDW_INVALIDATE : RDW_UPDATENOW );
 	}
 
 	int MessageLoop()
@@ -106,6 +115,50 @@ private:
 
 				return FALSE;
 			} break;
+			case WM_MOUSEMOVE:
+			case WM_LBUTTONDOWN:
+			case WM_LBUTTONUP:
+			case WM_LBUTTONDBLCLK:
+			case WM_MBUTTONDOWN:
+			case WM_MBUTTONUP:
+			case WM_MBUTTONDBLCLK:
+			case WM_RBUTTONDOWN:
+			case WM_RBUTTONUP:
+			case WM_RBUTTONDBLCLK:
+			case WM_XBUTTONDOWN:
+			case WM_XBUTTONUP:
+			case WM_XBUTTONDBLCLK:
+			{
+				int x = GET_X_LPARAM( lParam );
+				int y = GET_Y_LPARAM( lParam );
+
+				struct MouseButtonAndState { MouseButton button; MouseState state; };
+
+				std::unordered_map<UINT, MouseButtonAndState> mapMessageToMouse
+				{
+					{ WM_MOUSEMOVE,		{ MouseButton::None,	MouseState::Move		} },
+					{ WM_LBUTTONDOWN,	{ MouseButton::Left,	MouseState::Down		} },
+					{ WM_LBUTTONUP,		{ MouseButton::Left,	MouseState::Up			} },
+					{ WM_LBUTTONDBLCLK,	{ MouseButton::Left,	MouseState::DoubleClick } },
+					{ WM_MBUTTONDOWN,	{ MouseButton::Middle,	MouseState::Down		} },
+					{ WM_MBUTTONUP,		{ MouseButton::Middle,	MouseState::Up			} },
+					{ WM_MBUTTONDBLCLK,	{ MouseButton::Middle,	MouseState::DoubleClick } },
+					{ WM_RBUTTONDOWN,	{ MouseButton::Right,	MouseState::Down		} },
+					{ WM_RBUTTONUP,		{ MouseButton::Right,	MouseState::Up			} },
+					{ WM_RBUTTONDBLCLK,	{ MouseButton::Right,	MouseState::DoubleClick } },
+					{ WM_XBUTTONDOWN,	{ MouseButton::Other,	MouseState::Down		} },
+					{ WM_XBUTTONUP,		{ MouseButton::Other,	MouseState::Up			} },
+					{ WM_XBUTTONDBLCLK,	{ MouseButton::Other,	MouseState::DoubleClick } },
+				};
+
+				if ( _messageHandler )
+				{
+					const auto& mouse = mapMessageToMouse.at( message );
+					_messageHandler( MouseMessage{ mouse.state, mouse.button, PointPx{ x, y } } );
+				}
+				
+			} break;
+			case WM_MOUSEWHEEL:
 			default:
 				break;
 		}
@@ -169,9 +222,9 @@ private:
 	}
 };
 
-Window::Window( WindowType type, graphics::IDevice& device, const String& name, const Rect& rc, Window* parentWindow, MessageHandler messageHandler )
+Window::Window( WindowType type, graphics::IDevice& device, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler )
 {
-	_impl.reset( new Impl{ type, device, name, rc, parentWindow, messageHandler } );
+	_impl.reset( new Impl{ type, device, name, rcPx, parentWindow, messageHandler } );
 }
 
 Window::~Window()
@@ -182,6 +235,11 @@ Window::~Window()
 void Window::Show()
 {
 	_impl->Show();
+}
+
+void Window::Redraw( WindowRedraw redraw )
+{
+	_impl->Redraw( redraw );
 }
 
 class Application::Impl

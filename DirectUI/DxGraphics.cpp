@@ -72,7 +72,7 @@ private:
 	wrl::ComPtr<ID3D11RenderTargetView> _d3dRenderTargetView;
 	wrl::ComPtr<ID3D11DepthStencilView> _d3dDepthStencilView;
 	D3D11_VIEWPORT                      _viewport;
-	Size                                _d3dRenderTargetSize;
+	SizeF                               _d3dRenderTargetSize;
 
 	// Direct2D
 	wrl::ComPtr<ID2D1DeviceContext1>	_d2dContext;
@@ -92,8 +92,8 @@ public:
 	void BeginDraw( directui::Handle windowHandle ) override;
 	void EndDraw() override;
 
-	void Clear( Color color ) override;
-	void FillSolidRect( Color color, Rect rect ) override;
+	void Clear( const ColorF& color ) override;
+	void FillSolidRect( const ColorF& color, const RectF& rect ) override;
 };
 
 inline void ThrowIfFailed( HRESULT hr )
@@ -537,12 +537,12 @@ void DeviceContext::EndDraw()
 	::EndPaint( _hwnd, &_ps );
 }
 
-void DeviceContext::Clear( Color color )
+void DeviceContext::Clear( const ColorF& color )
 {
 	_d2dContext->Clear( D2D1::ColorF( color.r, color.g, color.b, color.a ) );
 }
 
-void DeviceContext::FillSolidRect( Color color, Rect rect )
+void DeviceContext::FillSolidRect( const ColorF& color, const RectF& rect )
 {
 	wrl::ComPtr<ID2D1SolidColorBrush> brush;
 	_d2dContext->CreateSolidColorBrush(

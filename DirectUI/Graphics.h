@@ -7,32 +7,32 @@
 namespace graphics
 {
 
-struct Point
+struct PointF
 {
 	float x, y;
-	Point() : x{ 0 }, y{ 0 } {}
-	Point( float x, float y ) : x{ x }, y{ y } {}
+	PointF() : x{ 0 }, y{ 0 } {}
+	PointF( float x, float y ) : x{ x }, y{ y } {}
 };
 
-struct Size
+struct SizeF
 {
 	float w, h;
-	Size() : w{ 0 }, h{ 0 } {}
-	Size( float w, float h ) : w{ w }, h{ h } {}
+	SizeF() : w{ 0 }, h{ 0 } {}
+	SizeF( float w, float h ) : w{ w }, h{ h } {}
 };
 
-struct Rect
+struct RectF
 {
 	float x, y, w, h;
-	Rect() : x{ 0 }, y{ 0 }, w{ 0 }, h{ 0 } {}
-	Rect( float x, float y, float w, float h ) : x{ x }, y{ y }, w{ w }, h{ h } {}
+	RectF() : x{ 0 }, y{ 0 }, w{ 0 }, h{ 0 } {}
+	RectF( float x, float y, float w, float h ) : x{ x }, y{ y }, w{ w }, h{ h } {}
 };
 
-struct Color
+struct ColorF
 {
 	float r, g, b, a;
-	Color() : r{ 0 }, g{ 0 }, b{ 0 }, a{ 0 } {}
-	Color( float r, float g, float b, float a ) : r{ r }, g{ g }, b{ b }, a{ a } {}
+	ColorF() : r{ 0 }, g{ 0 }, b{ 0 }, a{ 0 } {}
+	ColorF( float r, float g, float b, float a ) : r{ r }, g{ g }, b{ b }, a{ a } {}
 };
 
 class IDeviceContext;
@@ -53,8 +53,8 @@ public:
 	virtual void BeginDraw( directui::Handle windowHandle ) = 0;
 	virtual void EndDraw() = 0;
 
-	virtual void Clear( Color color ) = 0;
-	virtual void FillSolidRect( Color color, Rect rect ) = 0;
+	virtual void Clear( const ColorF& color ) = 0;
+	virtual void FillSolidRect( const ColorF& color, const RectF& rect ) = 0;
 };
 
 } // namespace graphics
