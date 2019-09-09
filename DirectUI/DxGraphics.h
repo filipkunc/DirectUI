@@ -5,6 +5,6 @@
 namespace graphics::dx
 {
 
-std::unique_ptr<IDevice> CreateDevice();
+std::unique_ptr<graphics::Device> CreateDevice();
 
 } // namespace graphics::dx

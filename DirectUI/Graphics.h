@@ -35,26 +35,51 @@ struct ColorF
 	ColorF( float r, float g, float b, float a ) : r{ r }, g{ g }, b{ b }, a{ a } {}
 };
 
-class IDeviceContext;
+class DeviceContext;
 
-class IDevice
+class Brush
 {
+private:
+	const char* _name;
 public:
-	virtual ~IDevice() {}
+	Brush( const char* name ) : _name{ name } {}
+	virtual ~Brush() {}
 
-	virtual std::unique_ptr<IDeviceContext> CreateDeviceContext() = 0;
+	template< typename TBrush >
+	TBrush* As()
+	{
+		if ( TBrush::Name() == _name )
+		{
+			return static_cast< TBrush* >( this );
+		}
+		return nullptr;
+	}
 };
 
-class IDeviceContext
+class Device
 {
 public:
-	virtual ~IDeviceContext() {}
+	virtual ~Device() {}
+
+	virtual std::unique_ptr<DeviceContext> CreateDeviceContext() = 0;
+};
+
+class DeviceContext
+{
+public:
+	virtual ~DeviceContext() {}
+
+	virtual std::unique_ptr<Brush> CreateSolidBrush( const ColorF& color ) = 0;
 
 	virtual void BeginDraw( directui::Handle windowHandle ) = 0;
 	virtual void EndDraw() = 0;
 
 	virtual void Clear( const ColorF& color ) = 0;
-	virtual void FillSolidRect( const ColorF& color, const RectF& rect ) = 0;
+	virtual void FillRect( Brush& brush, const RectF& rect ) = 0;
+	virtual void DrawRect( Brush& brush, const RectF& rect, float strokeWidth = 1.0f ) = 0;
+
+	void FillSolidRect( const ColorF& color, const RectF& rect );
+	void DrawSolidRect( const ColorF& color, const RectF& rect, float strokeWidth = 1.0f );
 };
 
 } // namespace graphics

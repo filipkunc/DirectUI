@@ -5,7 +5,7 @@
 namespace graphics
 {
 
-class IDeviceContext;
+class DeviceContext;
 
 }
 
@@ -15,17 +15,17 @@ namespace directui
 class DrawMessage : public Message
 {
 private:
-	graphics::IDeviceContext& _deviceContext;
+	graphics::DeviceContext& _deviceContext;
 public:
 	static const char* Name() { return "Draw"; }
 
-	DrawMessage( graphics::IDeviceContext& deviceContext )
+	DrawMessage( graphics::DeviceContext& deviceContext )
 		: Message{ Name() }
 		, _deviceContext{ deviceContext }
 	{
 	}
 
-	graphics::IDeviceContext& GetDeviceContext() const { return _deviceContext; }
+	graphics::DeviceContext& GetDeviceContext() const { return _deviceContext; }
 };
 
 } // namespace directui

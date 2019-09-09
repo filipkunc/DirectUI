@@ -32,7 +32,9 @@ struct CoInit
 	~CoInit();
 };
 
-class Device : public IDevice
+class DeviceContext;
+
+class Device : public graphics::Device
 {
 private:
 	friend class DeviceContext;
@@ -45,12 +47,12 @@ private:
 	D3D_FEATURE_LEVEL                 _d3dFeatureLevel;
 
 	// Direct2D
-	wrl::ComPtr<ID2D1Factory2>       _d2dFactory;
-	wrl::ComPtr<ID2D1Device1>        _d2dDevice;
+	wrl::ComPtr<ID2D1Factory2>        _d2dFactory;
+	wrl::ComPtr<ID2D1Device1>         _d2dDevice;
 
 	// DirectWrite + Windows Imaging Component
-	wrl::ComPtr<IDWriteFactory2>     _dwriteFactory;
-	wrl::ComPtr<IWICImagingFactory2> _wicFactory;
+	wrl::ComPtr<IDWriteFactory2>      _dwriteFactory;
+	wrl::ComPtr<IWICImagingFactory2>  _wicFactory;
 
 	void CreateIndependent();
 	void CreateDevice();
@@ -58,10 +60,38 @@ public:
 	Device();
 	virtual ~Device();
 
-	std::unique_ptr<IDeviceContext> CreateDeviceContext() override;
+	std::unique_ptr<graphics::DeviceContext> CreateDeviceContext() override;
 };
 
-class DeviceContext : public IDeviceContext
+using BrushBuilder = std::function<void( ID2D1DeviceContext1& d2dContext, wrl::ComPtr<ID2D1Brush>& outBrush )>;
+
+class Brush : public graphics::Brush
+{
+private:
+	wrl::ComPtr<ID2D1Brush> _brush;
+	BrushBuilder _builder;
+public:
+	static const char* Name() { return "DxBrush"; }
+
+	Brush( BrushBuilder builder )
+		: graphics::Brush{ Name() }
+		, _builder{ builder }
+	{
+	}
+
+	virtual ~Brush() {}
+
+	ID2D1Brush* GetOrCreateBrush( ID2D1DeviceContext1& d2dContext )
+	{
+		if ( _brush == nullptr )
+		{
+			_builder( d2dContext, _brush );
+		}
+		return _brush.Get();
+	}
+};
+
+class DeviceContext : public graphics::DeviceContext
 {
 private:
 	Device& _device;
@@ -88,12 +118,15 @@ public:
 	virtual ~DeviceContext();
 
 	void Resize( HWND hwnd );
+
+	std::unique_ptr<graphics::Brush> CreateSolidBrush( const ColorF& color ) override;
 	
 	void BeginDraw( directui::Handle windowHandle ) override;
 	void EndDraw() override;
 
 	void Clear( const ColorF& color ) override;
-	void FillSolidRect( const ColorF& color, const RectF& rect ) override;
+	void FillRect( graphics::Brush& brush, const RectF& rect ) override;
+	void DrawRect( graphics::Brush& brush, const RectF& rect, float strokeWidth ) override;
 };
 
 inline void ThrowIfFailed( HRESULT hr )
@@ -135,9 +168,9 @@ Device::~Device()
 
 }
 
-std::unique_ptr<IDeviceContext> Device::CreateDeviceContext()
+std::unique_ptr<graphics::DeviceContext> Device::CreateDeviceContext()
 {
-	return std::unique_ptr<IDeviceContext>( new DeviceContext( *this ) );
+	return std::unique_ptr<graphics::DeviceContext>( new DeviceContext( *this ) );
 }
 
 void Device::CreateIndependent()
@@ -510,6 +543,19 @@ bool DeviceContext::Present()
 	return true;
 }
 
+std::unique_ptr<graphics::Brush> DeviceContext::CreateSolidBrush( const ColorF& color )
+{
+	return std::unique_ptr<graphics::Brush>( new Brush( 
+		[color] ( ID2D1DeviceContext1& d2dContext, wrl::ComPtr<ID2D1Brush>& outBrush ) {
+			
+			wrl::ComPtr<ID2D1SolidColorBrush> brush;
+			d2dContext.CreateSolidColorBrush(
+				D2D1::ColorF( color.r, color.g, color.b, color.a ),
+				&brush );
+			ThrowIfFailed( brush.As( &outBrush ) );
+		} ) );
+}
+
 void DeviceContext::BeginDraw(directui::Handle windowHandle)
 {
 	Resize( static_cast< HWND >( windowHandle ) );
@@ -542,20 +588,31 @@ void DeviceContext::Clear( const ColorF& color )
 	_d2dContext->Clear( D2D1::ColorF( color.r, color.g, color.b, color.a ) );
 }
 
-void DeviceContext::FillSolidRect( const ColorF& color, const RectF& rect )
+void DeviceContext::FillRect( graphics::Brush& brush, const RectF& rect )
 {
-	wrl::ComPtr<ID2D1SolidColorBrush> brush;
-	_d2dContext->CreateSolidColorBrush(
-		D2D1::ColorF( color.r, color.g, color.b, color.a ),
-		&brush );
-	_d2dContext->FillRectangle(
-		D2D1::RectF( rect.x, rect.y, rect.x + rect.w, rect.y + rect.h ),
-		brush.Get() );
+	if ( auto pBrush = brush.As<Brush>() )
+	{
+		_d2dContext->FillRectangle(
+			D2D1::RectF( rect.x, rect.y, rect.x + rect.w, rect.y + rect.h ),
+			pBrush->GetOrCreateBrush( *_d2dContext.Get() ) );
+	}
 }
 
-std::unique_ptr<IDevice> CreateDevice()
+void DeviceContext::DrawRect( graphics::Brush& brush, const RectF& rect, float strokeWidth )
 {
-	return std::unique_ptr<IDevice>( new Device() );
+	if ( auto pBrush = brush.As<Brush>() )
+	{
+		_d2dContext->DrawRectangle(
+			D2D1::RectF( rect.x, rect.y, rect.x + rect.w, rect.y + rect.h ),
+			pBrush->GetOrCreateBrush( *_d2dContext.Get() ),
+			strokeWidth
+		);
+	}
+}
+
+std::unique_ptr<graphics::Device> CreateDevice()
+{
+	return std::unique_ptr<graphics::Device>( new Device() );
 }
 
 } // namespace graphics::dx

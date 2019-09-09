@@ -24,7 +24,7 @@ private:
 	HWND _hwnd{ nullptr };
 	bool _willDestroyPostQuit{ false };
 	MessageHandler _messageHandler{ nullptr };
-	std::unique_ptr<graphics::IDeviceContext> _deviceContext;
+	std::unique_ptr<graphics::DeviceContext> _deviceContext;
 
 	static const wchar_t* ClassName() { return  L"DirectUIWindow"; }
 
@@ -40,7 +40,7 @@ private:
 	}
 
 public:
-	Impl( WindowType type, graphics::IDevice& device, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler )
+	Impl( WindowType type, graphics::Device& device, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler )
 	{
 		RegisterOnce();
 
@@ -62,6 +62,8 @@ public:
 	{
 		::DestroyWindow( _hwnd );
 	}
+
+	Handle GetHandle() const { return _hwnd; }
 
 	void Show()
 	{
@@ -222,7 +224,7 @@ private:
 	}
 };
 
-Window::Window( WindowType type, graphics::IDevice& device, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler )
+Window::Window( WindowType type, graphics::Device& device, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler )
 {
 	_impl.reset( new Impl{ type, device, name, rcPx, parentWindow, messageHandler } );
 }
@@ -230,6 +232,11 @@ Window::Window( WindowType type, graphics::IDevice& device, const String& name, 
 Window::~Window()
 {
 	_impl.reset();
+}
+
+Handle Window::GetHandle() const
+{
+	return _impl->GetHandle();
 }
 
 void Window::Show()
