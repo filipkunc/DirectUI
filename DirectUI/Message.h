@@ -1,25 +1,14 @@
 #pragma once
 
+#include "CoreTypes.h"
+
 namespace directui
 {
 
-class Message
+class Message : public NamedBase
 {
-private:
-	const char* _name;
 public:
-	Message( const char* name ) : _name{ name } {}
-	~Message() {}
-
-	template< typename TMessage >
-	const TMessage* As() const
-	{
-		if ( TMessage::Name() == _name )
-		{
-			return static_cast< const TMessage* >( this );
-		}
-		return nullptr;
-	}
+	using NamedBase::NamedBase;
 };
 
 } // namespace directui

@@ -3,9 +3,12 @@
 #include "CoreTypes.h"
 #include <memory> // for std::unique_ptr
 #include <functional> // for std::function
+#include <string> // for std::wstring
 
 namespace graphics
 {
+
+using String = std::wstring;
 
 struct PointF
 {
@@ -37,23 +40,22 @@ struct ColorF
 
 class DeviceContext;
 
-class Brush
+class Brush : public directui::NamedBase
 {
-private:
-	const char* _name;
 public:
-	Brush( const char* name ) : _name{ name } {}
-	virtual ~Brush() {}
+	using NamedBase::NamedBase;
+};
 
-	template< typename TBrush >
-	TBrush* As()
-	{
-		if ( TBrush::Name() == _name )
-		{
-			return static_cast< TBrush* >( this );
-		}
-		return nullptr;
-	}
+class TextFormat : public directui::NamedBase
+{
+public:
+	using NamedBase::NamedBase;
+};
+
+class TextLayout : public directui::NamedBase
+{
+public:
+	using NamedBase::NamedBase;
 };
 
 class Device
@@ -62,6 +64,8 @@ public:
 	virtual ~Device() {}
 
 	virtual std::unique_ptr<DeviceContext> CreateDeviceContext() = 0;
+	virtual std::unique_ptr<TextFormat> CreateTextFormat( const String& fontFamily, float height ) = 0;
+	virtual std::unique_ptr<TextLayout> CreateTextLayout( const String& text, const TextFormat& format, const SizeF& sizeFit ) = 0;
 };
 
 class DeviceContext
@@ -77,6 +81,7 @@ public:
 	virtual void Clear( const ColorF& color ) = 0;
 	virtual void FillRect( Brush& brush, const RectF& rect ) = 0;
 	virtual void DrawRect( Brush& brush, const RectF& rect, float strokeWidth = 1.0f ) = 0;
+	virtual void DrawTextLayout( const TextLayout& layout, Brush& brush, const PointF& position ) = 0;
 
 	void FillSolidRect( const ColorF& color, const RectF& rect );
 	void DrawSolidRect( const ColorF& color, const RectF& rect, float strokeWidth = 1.0f );

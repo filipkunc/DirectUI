@@ -34,6 +34,40 @@ struct CoInit
 
 class DeviceContext;
 
+class TextFormat : public graphics::TextFormat
+{
+private:
+	wrl::ComPtr<IDWriteTextFormat> _textFormat;
+public:
+	static const char* Name() { return "DxTextFormat"; }
+
+	TextFormat( wrl::ComPtr<IDWriteTextFormat>&& textFormat )
+		: graphics::TextFormat{ Name() }
+		, _textFormat{ std::move( textFormat ) }
+	{}
+
+	virtual ~TextFormat() {}
+
+	IDWriteTextFormat* Get() const { return _textFormat.Get(); }
+};
+
+class TextLayout : public graphics::TextLayout
+{
+private:
+	wrl::ComPtr<IDWriteTextLayout> _textLayout;
+public:
+	static const char* Name() { return "DxTextLayout"; }
+
+	TextLayout( wrl::ComPtr<IDWriteTextLayout>&& textLayout )
+		: graphics::TextLayout{ Name() }
+		, _textLayout{ std::move( textLayout ) }
+	{}
+
+	virtual ~TextLayout() {}
+
+	IDWriteTextLayout* Get() const { return _textLayout.Get(); }
+};
+
 class Device : public graphics::Device
 {
 private:
@@ -61,6 +95,8 @@ public:
 	virtual ~Device();
 
 	std::unique_ptr<graphics::DeviceContext> CreateDeviceContext() override;
+	std::unique_ptr<graphics::TextFormat> CreateTextFormat( const String& fontFamily, float height ) override;
+	std::unique_ptr<graphics::TextLayout> CreateTextLayout( const String& text, const graphics::TextFormat& format, const SizeF& sizeFit ) override;
 };
 
 using BrushBuilder = std::function<void( ID2D1DeviceContext1& d2dContext, wrl::ComPtr<ID2D1Brush>& outBrush )>;
@@ -81,7 +117,7 @@ public:
 
 	virtual ~Brush() {}
 
-	ID2D1Brush* GetOrCreateBrush( ID2D1DeviceContext1& d2dContext )
+	ID2D1Brush* GetOrCreate( ID2D1DeviceContext1& d2dContext )
 	{
 		if ( _brush == nullptr )
 		{
@@ -127,6 +163,7 @@ public:
 	void Clear( const ColorF& color ) override;
 	void FillRect( graphics::Brush& brush, const RectF& rect ) override;
 	void DrawRect( graphics::Brush& brush, const RectF& rect, float strokeWidth ) override;
+	void DrawTextLayout( const graphics::TextLayout& layout, graphics::Brush& brush, const PointF& position ) override;
 };
 
 inline void ThrowIfFailed( HRESULT hr )
@@ -171,6 +208,29 @@ Device::~Device()
 std::unique_ptr<graphics::DeviceContext> Device::CreateDeviceContext()
 {
 	return std::unique_ptr<graphics::DeviceContext>( new DeviceContext( *this ) );
+}
+
+std::unique_ptr<graphics::TextFormat> Device::CreateTextFormat( const String& fontFamily, float height )
+{
+	wrl::ComPtr<IDWriteTextFormat> textFormat;
+	ThrowIfFailed( _dwriteFactory->CreateTextFormat( fontFamily.c_str(), nullptr,
+		DWRITE_FONT_WEIGHT_NORMAL,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		height, L"", &textFormat ) );
+	return std::unique_ptr<graphics::TextFormat>( new TextFormat{ std::move( textFormat ) } );
+}
+
+std::unique_ptr<graphics::TextLayout> Device::CreateTextLayout( const String& text, const graphics::TextFormat& format, const SizeF& sizeFit )
+{
+	if ( auto pFormat = format.As<TextFormat>() )
+	{
+		wrl::ComPtr<IDWriteTextLayout> textLayout;
+		ThrowIfFailed( _dwriteFactory->CreateTextLayout( text.c_str(), text.length(),
+			pFormat->Get(), sizeFit.w, sizeFit.h, &textLayout ) );
+		return std::unique_ptr<graphics::TextLayout>( new TextLayout{ std::move( textLayout ) } );
+	}
+	return nullptr;
 }
 
 void Device::CreateIndependent()
@@ -594,7 +654,7 @@ void DeviceContext::FillRect( graphics::Brush& brush, const RectF& rect )
 	{
 		_d2dContext->FillRectangle(
 			D2D1::RectF( rect.x, rect.y, rect.x + rect.w, rect.y + rect.h ),
-			pBrush->GetOrCreateBrush( *_d2dContext.Get() ) );
+			pBrush->GetOrCreate( *_d2dContext.Get() ) );
 	}
 }
 
@@ -604,9 +664,25 @@ void DeviceContext::DrawRect( graphics::Brush& brush, const RectF& rect, float s
 	{
 		_d2dContext->DrawRectangle(
 			D2D1::RectF( rect.x, rect.y, rect.x + rect.w, rect.y + rect.h ),
-			pBrush->GetOrCreateBrush( *_d2dContext.Get() ),
+			pBrush->GetOrCreate( *_d2dContext.Get() ),
 			strokeWidth
 		);
+	}
+}
+
+void DeviceContext::DrawTextLayout( const graphics::TextLayout& layout, graphics::Brush& brush, const PointF& position )
+{
+	if ( auto pBrush = brush.As<Brush>() )
+	{
+		if ( auto pTextLayout = layout.As<TextLayout>() )
+		{
+			_d2dContext->DrawTextLayout(
+				D2D1::Point2F( position.x, position.y ),
+				pTextLayout->Get(),
+				pBrush->GetOrCreate( *_d2dContext.Get() ),
+				D2D1_DRAW_TEXT_OPTIONS_NONE
+			);
+		}
 	}
 }
 

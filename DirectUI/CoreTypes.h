@@ -5,6 +5,35 @@ namespace directui
 
 using Handle = void*;
 
+class NamedBase
+{
+protected:
+	const char* _name;
+public:
+	NamedBase( const char* name ) : _name{ name } {}
+	virtual ~NamedBase() {}
+
+	template< typename TDerived >
+	TDerived* As()
+	{
+		if ( TDerived::Name() == _name )
+		{
+			return static_cast< TDerived* >( this );
+		}
+		return nullptr;
+	}
+
+	template< typename TDerived >
+	const TDerived* As() const
+	{
+		if ( TDerived::Name() == _name )
+		{
+			return static_cast< const TDerived* >( this );
+		}
+		return nullptr;
+	}
+};
+
 struct PointPx
 {
 	int x, y;
