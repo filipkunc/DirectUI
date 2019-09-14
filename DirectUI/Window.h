@@ -42,9 +42,12 @@ public:
 	~Window();
 
 	Handle GetHandle() const;
-
+	float GetDpi() const;
+	
 	void Show();
 	void Redraw( WindowRedraw redraw = WindowRedraw::Invalidate );
 };
 
-}
+float GetSystemDpi();
+
+} //namespace directui

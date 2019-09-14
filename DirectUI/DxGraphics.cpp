@@ -414,6 +414,8 @@ void DeviceContext::Resize( HWND hwnd )
 
 	_hwnd = hwnd;
 
+	auto dpi = ::GetDpiForWindow( _hwnd );
+
 	// Clear the previous window size specific context.
 	ID3D11RenderTargetView* nullViews[] = { nullptr };
 	_device._d3dContext->OMSetRenderTargets( ARRAYSIZE( nullViews ), nullViews, nullptr );
@@ -569,6 +571,7 @@ void DeviceContext::Resize( HWND hwnd )
 	);
 
 	_d2dContext->SetTarget( _d2dTargetBitmap.Get() );
+	_d2dContext->SetDpi( static_cast< float >( dpi ), static_cast< float >( dpi ) );
 }
 
 bool DeviceContext::Present()
@@ -680,7 +683,7 @@ void DeviceContext::DrawTextLayout( const graphics::TextLayout& layout, graphics
 				D2D1::Point2F( position.x, position.y ),
 				pTextLayout->Get(),
 				pBrush->GetOrCreate( *_d2dContext.Get() ),
-				D2D1_DRAW_TEXT_OPTIONS_NONE
+				D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT
 			);
 		}
 	}

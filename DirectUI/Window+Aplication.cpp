@@ -64,6 +64,11 @@ public:
 	}
 
 	Handle GetHandle() const { return _hwnd; }
+	
+	float GetDpi()  const
+	{
+		return static_cast< float >( ::GetDpiForWindow( _hwnd ) );
+	}
 
 	void Show()
 	{
@@ -239,6 +244,11 @@ Handle Window::GetHandle() const
 	return _impl->GetHandle();
 }
 
+float Window::GetDpi() const
+{
+	return _impl->GetDpi();
+}
+
 void Window::Show()
 {
 	_impl->Show();
@@ -251,6 +261,11 @@ void Window::Redraw( WindowRedraw redraw )
 
 class Application::Impl
 {
+public:
+	Impl()
+	{
+		::SetProcessDpiAwarenessContext( DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 );
+	}
 };
 
 Application::Application()
@@ -274,6 +289,11 @@ Application*& Application::Instance()
 int Application::Run( Window& window )
 {
 	return window._impl->MessageLoop();
+}
+
+float GetSystemDpi()
+{
+	return static_cast< float >( ::GetDpiForSystem() );
 }
 
 } // namespace directui

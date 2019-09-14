@@ -21,6 +21,9 @@
     <ClCompile Include="DxGraphics.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Dpi.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -45,6 +48,9 @@
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="MouseMesage.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Dpi.h">
       <Filter>Source</Filter>
     </ClInclude>
   </ItemGroup>

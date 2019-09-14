@@ -10,27 +10,6 @@ namespace graphics
 
 using String = std::wstring;
 
-struct PointF
-{
-	float x, y;
-	PointF() : x{ 0 }, y{ 0 } {}
-	PointF( float x, float y ) : x{ x }, y{ y } {}
-};
-
-struct SizeF
-{
-	float w, h;
-	SizeF() : w{ 0 }, h{ 0 } {}
-	SizeF( float w, float h ) : w{ w }, h{ h } {}
-};
-
-struct RectF
-{
-	float x, y, w, h;
-	RectF() : x{ 0 }, y{ 0 }, w{ 0 }, h{ 0 } {}
-	RectF( float x, float y, float w, float h ) : x{ x }, y{ y }, w{ w }, h{ h } {}
-};
-
 struct ColorF
 {
 	float r, g, b, a;

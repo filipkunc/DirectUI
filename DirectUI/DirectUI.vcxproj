@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Dpi.cpp" />
     <ClCompile Include="DxGraphics.cpp" />
     <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="Test.cpp" />
@@ -27,6 +28,7 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="CoreTypes.h" />
+    <ClInclude Include="Dpi.h" />
     <ClInclude Include="DxGraphics.h" />
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="Message.h" />
