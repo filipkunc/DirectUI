@@ -66,6 +66,33 @@ public:
 	virtual ~TextLayout() {}
 
 	IDWriteTextLayout* Get() const { return _textLayout.Get(); }
+
+	void SetTextAlignment( TextAlignment alignment ) override
+	{
+		DWRITE_TEXT_ALIGNMENT dwriteAlignment;
+		switch ( alignment )
+		{
+			case TextAlignment::Leading:	dwriteAlignment = DWRITE_TEXT_ALIGNMENT_LEADING; break;
+			case TextAlignment::Trailing:	dwriteAlignment = DWRITE_TEXT_ALIGNMENT_TRAILING; break;
+			case TextAlignment::Center:		dwriteAlignment = DWRITE_TEXT_ALIGNMENT_CENTER; break;
+			case TextAlignment::Justified:	dwriteAlignment = DWRITE_TEXT_ALIGNMENT_JUSTIFIED; break;
+			default: dwriteAlignment = DWRITE_TEXT_ALIGNMENT_LEADING; break;
+		}
+		_textLayout->SetTextAlignment( dwriteAlignment );
+	}
+
+	void SetParagraphAlignment( ParagraphAlignment alignment ) override
+	{
+		DWRITE_PARAGRAPH_ALIGNMENT dwriteAlignment;
+		switch ( alignment )
+		{
+			case ParagraphAlignment::Near:		dwriteAlignment = DWRITE_PARAGRAPH_ALIGNMENT_NEAR; break;
+			case ParagraphAlignment::Far:		dwriteAlignment = DWRITE_PARAGRAPH_ALIGNMENT_FAR; break;
+			case ParagraphAlignment::Center:	dwriteAlignment = DWRITE_PARAGRAPH_ALIGNMENT_CENTER; break;
+			default: dwriteAlignment = DWRITE_PARAGRAPH_ALIGNMENT_NEAR; break;
+		}
+		_textLayout->SetParagraphAlignment( dwriteAlignment );
+	}
 };
 
 class Device : public graphics::Device
@@ -159,6 +186,8 @@ public:
 	
 	void BeginDraw( directui::Handle windowHandle ) override;
 	void EndDraw() override;
+
+	RectF GetDrawRect() override;
 
 	void Clear( const ColorF& color ) override;
 	void FillRect( graphics::Brush& brush, const RectF& rect ) override;
@@ -644,6 +673,16 @@ void DeviceContext::EndDraw()
 	Present();
 
 	::EndPaint( _hwnd, &_ps );
+}
+
+RectF DeviceContext::GetDrawRect()
+{
+	FLOAT scaleX, scaleY;
+	_d2dContext->GetDpi( &scaleX, &scaleY );
+	scaleX /= 96.0f;
+	scaleY /= 96.0f;
+
+	return RectF{ _viewport.TopLeftX / scaleX, _viewport.TopLeftY / scaleY, _viewport.Width / scaleX, _viewport.Height / scaleY };
 }
 
 void DeviceContext::Clear( const ColorF& color )

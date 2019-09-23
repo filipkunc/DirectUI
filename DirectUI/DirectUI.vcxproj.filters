@@ -54,4 +54,9 @@
       <Filter>Source</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Xml Include="DirectUI.manifest">
+      <Filter>Source</Filter>
+    </Xml>
+  </ItemGroup>
 </Project>

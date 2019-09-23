@@ -79,6 +79,13 @@ struct RectF
 	float x, y, w, h;
 	RectF() : x{ 0 }, y{ 0 }, w{ 0 }, h{ 0 } {}
 	RectF( float x, float y, float w, float h ) : x{ x }, y{ y }, w{ w }, h{ h } {}
+
+	bool HasPoint( const PointF& point ) const
+	{
+		return
+			point.x >= x && point.x <= x + w &&
+			point.y >= y && point.y <= y + h;
+	}
 };
 
 } // namespace graphics

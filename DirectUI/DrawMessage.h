@@ -19,8 +19,8 @@ private:
 public:
 	static const char* Name() { return "Draw"; }
 
-	DrawMessage( graphics::DeviceContext& deviceContext )
-		: Message{ Name() }
+	DrawMessage( Window& window, graphics::DeviceContext& deviceContext )
+		: Message{ Name(), window }
 		, _deviceContext{ deviceContext }
 	{
 	}

@@ -32,8 +32,8 @@ private:
 public:
 	static const char* Name() { return "Mouse"; }
 
-	MouseMessage( MouseState state, MouseButton button, PointPx position )
-		: Message{ Name() }
+	MouseMessage( Window& window, MouseState state, MouseButton button, PointPx position )
+		: Message{ Name(), window }
 		, _state{ state }
 		, _button{ button }
 		, _position{ position }

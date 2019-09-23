@@ -4,15 +4,19 @@
 #include "DrawMessage.h"
 #include "MouseMesage.h"
 #include "Graphics.h"
+#include "DxGraphics.h"
 
 #include <unordered_map>
 
 #define NOMINMAX
 #include <windows.h> // for Win32 API
 #include <windowsx.h> // for GET_X_LPARAM, GET_Y_LPARAM
+#include <dwmapi.h> // for access to Desktop Window Manager functions
+#include <versionhelpers.h>
 
 #ifdef _MSC_VER
 #pragma comment(linker, "/subsystem:windows /ENTRY:mainCRTStartup")
+#pragma comment(lib, "dwmapi.lib")
 #endif
 
 namespace directui
@@ -21,40 +25,50 @@ namespace directui
 class Window::Impl
 {
 private:
+	Window& _self;
+
 	HWND _hwnd{ nullptr };
+
 	bool _willDestroyPostQuit{ false };
 	MessageHandler _messageHandler{ nullptr };
 	std::unique_ptr<graphics::DeviceContext> _deviceContext;
 
 	static const wchar_t* ClassName() { return  L"DirectUIWindow"; }
 
-	static DWORD WindowStyleFromType( WindowType type )
+	struct WindowStyles
+	{
+		DWORD style;
+		DWORD exStyle;
+	};
+
+	static WindowStyles WindowStylesFromType( WindowType type )
 	{
 		switch ( type )
 		{
-			case WindowType::Main: return WS_OVERLAPPEDWINDOW;
-			case WindowType::Popup: return WS_POPUPWINDOW;
-			case WindowType::Child: return WS_CHILDWINDOW;
-			default: return 0;
+			case WindowType::Main: return WindowStyles{ WS_OVERLAPPEDWINDOW, WS_EX_NOREDIRECTIONBITMAP | WS_EX_APPWINDOW };
+			case WindowType::Popup: return WindowStyles{ WS_POPUPWINDOW, WS_EX_NOREDIRECTIONBITMAP };
+			case WindowType::Child: return WindowStyles{ WS_CHILDWINDOW, WS_EX_NOREDIRECTIONBITMAP };
+			default: return WindowStyles{ 0, 0 };
 		}
 	}
 
 public:
-	Impl( WindowType type, graphics::Device& device, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler )
+	Impl( Window& self, WindowType type, graphics::Device& device, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler )
+		: _self{ self }
 	{
 		RegisterOnce();
 
-		DWORD style = WindowStyleFromType( type ) | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+		auto styles = WindowStylesFromType( type );
 		HWND parentHwnd = nullptr;
 
 		if ( parentWindow && parentWindow->_impl )
 			parentHwnd = parentWindow->_impl->_hwnd;
 
 		_messageHandler = messageHandler;
-		_hwnd = ::CreateWindowExW( 0U, ClassName(), name.c_str(), style,
+		_hwnd = ::CreateWindowExW( styles.exStyle, ClassName(), name.c_str(), styles.style,
 			rcPx.x, rcPx.y, rcPx.w, rcPx.h,
 			parentHwnd, nullptr, ProgramInstance(), this );
-		
+
 		_deviceContext = device.CreateDeviceContext();
 	}
 
@@ -64,10 +78,18 @@ public:
 	}
 
 	Handle GetHandle() const { return _hwnd; }
-	
+
 	float GetDpi()  const
 	{
 		return static_cast< float >( ::GetDpiForWindow( _hwnd ) );
+	}
+
+	RectPx GetRect() const
+	{
+		RECT rc{ 0, 0, 0, 0 };
+		::GetClientRect( _hwnd, &rc );
+		::MapWindowRect( _hwnd, nullptr, &rc );
+		return RectPx{ rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top };
 	}
 
 	void Show()
@@ -78,6 +100,11 @@ public:
 	void Redraw( WindowRedraw redraw )
 	{
 		::RedrawWindow( _hwnd, nullptr, nullptr, redraw == WindowRedraw::Invalidate ? RDW_INVALIDATE : RDW_UPDATENOW );
+	}
+
+	void Move( const RectPx& rcPx )
+	{
+		::SetWindowPos( _hwnd, nullptr, rcPx.x, rcPx.y, rcPx.w, rcPx.h, SWP_NOACTIVATE | SWP_NOZORDER );
 	}
 
 	int MessageLoop()
@@ -100,14 +127,52 @@ private:
 		if ( message == WM_DESTROY && _willDestroyPostQuit )
 		{
 			::PostQuitMessage( 0 );
-			return FALSE;
+			return 0;
+		}
+
+		LRESULT result = 0;
+		if ( ::DwmDefWindowProc( _hwnd, message, wParam, lParam, &result ) )
+		{
+			return result;
 		}
 
 		switch ( message )
 		{
+			case WM_ACTIVATE:
+			{
+				MARGINS margins{ 0,0,1,0 };
+				auto hr = ::DwmExtendFrameIntoClientArea( _hwnd, &margins );
+				if ( SUCCEEDED( hr ) )
+				{
+					::SetWindowPos( _hwnd, nullptr, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED );
+				}
+			} break;
 			case WM_ERASEBKGND:
 			{
-				return TRUE;
+				return 1;
+			} break;
+			case WM_NCCALCSIZE:
+			{
+				if ( wParam == TRUE )
+				{
+					/*NCCALCSIZE_PARAMS *pncsp = reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
+
+					pncsp->rgrc[0].left   = pncsp->rgrc[0].left   + 0;
+					pncsp->rgrc[0].top    = pncsp->rgrc[0].top    + 0;
+					pncsp->rgrc[0].right  = pncsp->rgrc[0].right  - 0;
+					pncsp->rgrc[0].bottom = pncsp->rgrc[0].bottom - 0;*/
+
+					return 0;
+				}
+			} break;
+			case WM_NCHITTEST:
+			{
+				/*auto lRet = HitTestNCA( _hwnd, wParam, lParam );
+
+				if ( lRet != HTNOWHERE )
+				{
+					return lRet;
+				}*/
 			} break;
 			case WM_PAINT:
 			{
@@ -115,12 +180,12 @@ private:
 
 				if ( _messageHandler )
 				{
-					_messageHandler( DrawMessage{ *_deviceContext } );
+					_messageHandler( DrawMessage{ _self, *_deviceContext } );
 				}
 
 				_deviceContext->EndDraw();
 
-				return FALSE;
+				return 0;
 			} break;
 			case WM_MOUSEMOVE:
 			case WM_LBUTTONDOWN:
@@ -161,9 +226,17 @@ private:
 				if ( _messageHandler )
 				{
 					const auto& mouse = mapMessageToMouse.at( message );
-					_messageHandler( MouseMessage{ mouse.state, mouse.button, PointPx{ x, y } } );
+					if ( mouse.state == MouseState::Down )
+					{
+						::SetCapture( _hwnd );
+					}
+					else if ( mouse.state == MouseState::Up )
+					{
+						::ReleaseCapture();
+					}
+					_messageHandler( MouseMessage{ _self, mouse.state, mouse.button, PointPx{ x, y } } );
 				}
-				
+
 			} break;
 			case WM_MOUSEWHEEL:
 			default:
@@ -213,13 +286,13 @@ private:
 
 		wc.cbSize = sizeof( WNDCLASSEX );
 
-		wc.style = CS_DBLCLKS | CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
+		wc.style = CS_DBLCLKS | CS_VREDRAW | CS_HREDRAW;
 		wc.lpfnWndProc = WindowProc;
 		wc.cbClsExtra = 0;
 		wc.cbWndExtra = 0;
 		wc.hInstance = ProgramInstance();
 		wc.hIcon = nullptr;
-		wc.hCursor = ::LoadCursorW( nullptr, ( LPCWSTR ) IDC_ARROW );
+		wc.hCursor = ::LoadCursorW( nullptr, reinterpret_cast< LPCWSTR >( IDC_ARROW ) );
 		wc.hbrBackground = nullptr;
 		wc.lpszMenuName = nullptr;
 		wc.lpszClassName = ClassName();
@@ -229,9 +302,9 @@ private:
 	}
 };
 
-Window::Window( WindowType type, graphics::Device& device, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler )
+Window::Window( WindowType type, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler )
 {
-	_impl.reset( new Impl{ type, device, name, rcPx, parentWindow, messageHandler } );
+	_impl.reset( new Impl{ *this, type, Application::Instance()->GetDevice(), name, rcPx, parentWindow, messageHandler } );
 }
 
 Window::~Window()
@@ -249,6 +322,11 @@ float Window::GetDpi() const
 	return _impl->GetDpi();
 }
 
+RectPx Window::GetRect() const
+{
+	return _impl->GetRect();
+}
+
 void Window::Show()
 {
 	_impl->Show();
@@ -259,12 +337,24 @@ void Window::Redraw( WindowRedraw redraw )
 	_impl->Redraw( redraw );
 }
 
+void Window::Move( const RectPx& rcPx )
+{
+	_impl->Move( rcPx );
+}
+
 class Application::Impl
 {
+private:
+	std::unique_ptr<graphics::Device> _device;
 public:
 	Impl()
 	{
-		::SetProcessDpiAwarenessContext( DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 );
+		_device = graphics::dx::CreateDevice();
+	}
+
+	graphics::Device& GetDevice()
+	{
+		return *_device.get();
 	}
 };
 
@@ -289,6 +379,11 @@ Application*& Application::Instance()
 int Application::Run( Window& window )
 {
 	return window._impl->MessageLoop();
+}
+
+graphics::Device& Application::GetDevice()
+{
+	return _impl->GetDevice();
 }
 
 float GetSystemDpi()

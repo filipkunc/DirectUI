@@ -36,6 +36,9 @@
     <ClInclude Include="MouseMesage.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Xml Include="DirectUI.manifest" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{BA6CC373-F79D-4796-B145-2050BACF7A05}</ProjectGuid>
@@ -99,6 +102,13 @@
     <Link>
       <SubSystem>Console</SubSystem>
     </Link>
+    <Manifest />
+    <Manifest />
+    <Manifest>
+      <InputResourceManifests>
+      </InputResourceManifests>
+      <AdditionalManifestFiles>DirectUI.manifest</AdditionalManifestFiles>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -111,6 +121,13 @@
     <Link>
       <SubSystem>Console</SubSystem>
     </Link>
+    <Manifest />
+    <Manifest />
+    <Manifest>
+      <InputResourceManifests>
+      </InputResourceManifests>
+      <AdditionalManifestFiles>DirectUI.manifest</AdditionalManifestFiles>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -127,6 +144,13 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <Manifest />
+    <Manifest />
+    <Manifest>
+      <InputResourceManifests>
+      </InputResourceManifests>
+      <AdditionalManifestFiles>DirectUI.manifest</AdditionalManifestFiles>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -143,6 +167,13 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <Manifest />
+    <Manifest />
+    <Manifest>
+      <InputResourceManifests>
+      </InputResourceManifests>
+      <AdditionalManifestFiles>DirectUI.manifest</AdditionalManifestFiles>
+    </Manifest>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -15,6 +15,12 @@ struct ColorF
 	float r, g, b, a;
 	ColorF() : r{ 0 }, g{ 0 }, b{ 0 }, a{ 0 } {}
 	ColorF( float r, float g, float b, float a ) : r{ r }, g{ g }, b{ b }, a{ a } {}
+	ColorF( uint32_t hex, float a )
+		: r{ ( ( hex >> 16 ) & 0xFF ) / 255.0f }
+		, g{ ( ( hex >> 8 ) & 0xFF ) / 255.0f }
+		, b{ ( ( hex ) & 0xFF ) / 255.0f }
+		, a{ a }
+	{}
 };
 
 class DeviceContext;
@@ -31,10 +37,29 @@ public:
 	using NamedBase::NamedBase;
 };
 
+enum class TextAlignment
+{
+	Leading,
+	Trailing,
+	Center,
+	Justified
+};
+
+enum class ParagraphAlignment
+{
+	Near,
+	Far,
+	Center
+};
+
 class TextLayout : public directui::NamedBase
 {
 public:
 	using NamedBase::NamedBase;
+
+public:
+	virtual void SetTextAlignment( TextAlignment alignment ) = 0;
+	virtual void SetParagraphAlignment( ParagraphAlignment alignment ) = 0;
 };
 
 class Device
@@ -56,6 +81,8 @@ public:
 
 	virtual void BeginDraw( directui::Handle windowHandle ) = 0;
 	virtual void EndDraw() = 0;
+
+	virtual RectF GetDrawRect() = 0;
 
 	virtual void Clear( const ColorF& color ) = 0;
 	virtual void FillRect( Brush& brush, const RectF& rect ) = 0;

@@ -38,14 +38,17 @@ private:
 	class Impl;
 	std::unique_ptr<Impl> _impl;
 public:
-	Window( WindowType type, graphics::Device& device, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler );
+	Window( WindowType type, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler );
 	~Window();
 
 	Handle GetHandle() const;
 	float GetDpi() const;
+	RectPx GetRect() const;
 	
 	void Show();
 	void Redraw( WindowRedraw redraw = WindowRedraw::Invalidate );
+
+	void Move( const RectPx& rcPx );
 };
 
 float GetSystemDpi();
