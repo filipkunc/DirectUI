@@ -39,6 +39,9 @@
   <ItemGroup>
     <Xml Include="DirectUI.manifest" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.md" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{BA6CC373-F79D-4796-B145-2050BACF7A05}</ProjectGuid>

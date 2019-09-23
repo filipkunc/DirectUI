@@ -59,4 +59,7 @@
       <Filter>Source</Filter>
     </Xml>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.md" />
+  </ItemGroup>
 </Project>
