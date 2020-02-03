@@ -1,8 +1,5 @@
 #include "Window.h"
 #include "Application.h"
-#include "Message.h"
-#include "DrawMessage.h"
-#include "MouseMesage.h"
 #include "Graphics.h"
 #include "Dpi.h"
 
@@ -51,7 +48,7 @@ public:
 	MenuState GetState() const { return _state; }
 	void SetState( MenuState state ) { _state = state; }
 
-	void HandleMouse( const MouseMessage& mm, float dpi )
+	/*void HandleMouse( const MouseMessage& mm, float dpi )
 	{
 		if ( mm.GetState() == MouseState::Down )
 		{
@@ -70,15 +67,16 @@ public:
 				} ) );
 			_popup->Show();
 		}
-	}
+	}*/
 
 	void Draw( DeviceContext& dc )
 	{
-		auto brush = dc.CreateSolidBrush( ColorF{ 0xffffff, 1 } );
+		auto brush = dc.CreateSolidBrush( ColorF{ 0x22'55'ff, 1 } );
 		switch ( _state )
 		{
 			case MenuState::Active:		dc.FillSolidRect( ColorF{ 0x3E3E40, 1 }, _rect );	break;
 			case MenuState::Pressed:	dc.FillSolidRect( ColorF{ 0x1B1B1C, 1 }, _rect );	break;
+			default:					dc.DrawSolidRect( ColorF{ 0x3E3E40, 1 }, _rect );	break;
 		}
 		dc.DrawTextLayout( *_textLayout, *brush, PointF{ _rect.x, _rect.y } );
 	}
@@ -107,7 +105,7 @@ public:
 		}
 	}
 
-	void HandleMouse( const MouseMessage& mm, float dpi )
+	/*void HandleMouse( const MouseMessage& mm, float dpi )
 	{
 		auto mousePos = ConvertPoint( mm.GetPosition(), dpi );
 		MenuItem* activeItem = nullptr;
@@ -125,7 +123,7 @@ public:
 			activeItem->SetState( MenuState::Active );
 			activeItem->HandleMouse( mm, dpi );
 		}
-	}
+	}*/
 
 	void Draw( DeviceContext& dc )
 	{
@@ -150,40 +148,50 @@ int main()
 	PointPx dragStartPosPx;
 	bool isDragging{ false };
 
-	Window mainWindow{ WindowType::Main, L"Test App", ConvertRect( RectF{ 200, 200, 640, 480 }, GetSystemDpi() ), nullptr,
-		[&] ( const Message& message ) {
-			if ( auto dm = message.As<DrawMessage>() )
-			{
-				auto& dc = dm->GetDeviceContext();
-				dc.Clear( ColorF{ 0x2D2D30, 1 } );
-				menuBar.Draw( dc );
-				DrawThinBorder( dc );
-			}
-			else if ( auto mm = message.As<MouseMessage>() )
-			{
-				auto mousePosPx = mm->GetPosition();
-				menuBar.HandleMouse( *mm, mainWindow.GetDpi() );
-				mainWindow.Redraw();
+	Window mainWindow{ WindowType::Main, ConvertRect( RectF{ 200, 200, 640, 480 }, GetSystemDpi() ), nullptr };
 
-				if ( mm->GetState() == MouseState::Down )
-				{
-					dragStartPosPx = mousePosPx;
-					isDragging = true;
-				}
-				else if ( mm->GetState() == MouseState::Move && isDragging )
-				{
-					auto rc = mainWindow.GetRect();
-					rc.x += mousePosPx.x - dragStartPosPx.x;
-					rc.y += mousePosPx.y - dragStartPosPx.y;
-					mainWindow.Move( rc );
-				}
-				else if ( mm->GetState() == MouseState::Up )
-				{
-					isDragging = false;
-				}
-			}
-		}
+	mainWindow.OnDraw = [&menuBar] ( Window& w, DeviceContext& dc ) {
+		dc.Clear( ColorF{ 0x2D2D30, 0.1f } );
+		menuBar.Draw( dc );
+		DrawThinBorder( dc );
 	};
+
+	mainWindow.OnMouse = [&menuBar] ( Window& w, MouseState state, MouseButton button, PointPx position ) {
+
+	};
+
+		//[&] ( const Message& message ) {
+		//	if ( auto dm = message.As<DrawMessage>() )
+		//	{
+		//		auto& dc = dm->GetDeviceContext();
+		//		dc.Clear( ColorF{ 0x2D2D30, 1 } );
+		//		menuBar.Draw( dc );
+		//		DrawThinBorder( dc );
+		//	}
+		//	else if ( auto mm = message.As<MouseMessage>() )
+		//	{
+		//		auto mousePosPx = mm->GetPosition();
+		//		menuBar.HandleMouse( *mm, mainWindow.GetDpi() );
+		//		mainWindow.Redraw();
+
+		//		/*if ( mm->GetState() == MouseState::Down )
+		//		{
+		//			dragStartPosPx = mousePosPx;
+		//			isDragging = true;
+		//		}
+		//		else if ( mm->GetState() == MouseState::Move && isDragging )
+		//		{
+		//			auto rc = mainWindow.GetRect();
+		//			rc.x += mousePosPx.x - dragStartPosPx.x;
+		//			rc.y += mousePosPx.y - dragStartPosPx.y;
+		//			mainWindow.Move( rc );
+		//		}
+		//		else if ( mm->GetState() == MouseState::Up )
+		//		{
+		//			isDragging = false;
+		//		}*/
+		//	}
+		//}
 	mainWindow.Show();
 	
 	return app.Run( mainWindow );

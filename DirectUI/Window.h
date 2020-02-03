@@ -6,7 +6,11 @@
 #include <string> // for std::wstring
 #include <functional> // for std::function
 
-namespace graphics { class Device; }
+namespace graphics 
+{ 
+class Device;
+class DeviceContext;
+}
 
 namespace directui
 {
@@ -26,9 +30,27 @@ enum class WindowRedraw
 	Now
 };
 
-class Message;
+enum class MouseButton
+{
+	None,
+	Left,
+	Middle,
+	Right,
+	Other
+};
 
-using MessageHandler = std::function<void( const Message& message )>;
+enum class MouseState
+{
+	Down,
+	Up,
+	Move,
+	DoubleClick
+};
+
+class Window;
+
+using DrawCallback = std::function<void( Window& window, graphics::DeviceContext& )>;
+using MouseCallback = std::function<void( Window& window, MouseState state, MouseButton button, PointPx position )>;
 
 class Window
 {
@@ -37,8 +59,13 @@ private:
 
 	class Impl;
 	std::unique_ptr<Impl> _impl;
+
 public:
-	Window( WindowType type, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler );
+	DrawCallback OnDraw;
+	MouseCallback OnMouse;
+
+public:
+	Window( WindowType type, const RectPx& rcPx, Window* parentWindow );
 	~Window();
 
 	Handle GetHandle() const;

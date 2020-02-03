@@ -3,6 +3,7 @@
 
 #include <algorithm>
 
+#define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h> // for Win32 API
 
@@ -13,6 +14,7 @@
 #include <dwrite_2.h>
 #include <wincodec.h>
 #include <DirectXMath.h>
+#include <dcomp.h>
 
 #pragma comment(lib, "shcore.lib")
 #pragma comment(lib, "Comctl32.lib")
@@ -20,6 +22,7 @@
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "Dwrite.lib")
+#pragma comment(lib, "dcomp.lib")
 
 namespace graphics::dx
 {
@@ -170,6 +173,12 @@ private:
 	// Direct2D
 	wrl::ComPtr<ID2D1DeviceContext1>	_d2dContext;
 	wrl::ComPtr<ID2D1Bitmap1>			_d2dTargetBitmap;
+
+	// Direct Composition
+	wrl::ComPtr<IDCompositionDevice>	_dcompDevice;
+	wrl::ComPtr<IDCompositionTarget>	_dcompTarget;
+	wrl::ComPtr<IDCompositionVisual>	_dcompVisual;
+
 
 	HWND _hwnd;
 	HDC _hdc;
@@ -344,6 +353,7 @@ void Device::CreateDevice()
 	// description.  All applications are assumed to support 9.1 unless otherwise stated.
 	D3D_FEATURE_LEVEL featureLevels[] =
 	{
+		//D3D_FEATURE_LEVEL_12_0,
 		D3D_FEATURE_LEVEL_11_1,
 		D3D_FEATURE_LEVEL_11_0,
 		D3D_FEATURE_LEVEL_10_1,
@@ -485,7 +495,7 @@ void DeviceContext::Resize( HWND hwnd )
 	else
 	{
 		// Otherwise, create a new one using the same adapter as the existing Direct3D device.
-		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
+		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
 		swapChainDesc.Width = static_cast< UINT >( _d3dRenderTargetSize.w ); // Match the size of the window.
 		swapChainDesc.Height = static_cast< UINT >( _d3dRenderTargetSize.h );
 		swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; // This is the most common swap chain format.
@@ -496,8 +506,8 @@ void DeviceContext::Resize( HWND hwnd )
 		swapChainDesc.BufferCount = 2; // Use double-buffering to minimize latency.
 		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL; // All Windows Store apps must use this SwapEffect.
 		swapChainDesc.Flags = 0;
-		swapChainDesc.Scaling = DXGI_SCALING_NONE;
-		swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+		swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+		swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_PREMULTIPLIED;
 
 		// This sequence obtains the DXGI factory that was used to create the Direct3D device above.
 		wrl::ComPtr<IDXGIDevice3> dxgiDevice;
@@ -516,21 +526,34 @@ void DeviceContext::Resize( HWND hwnd )
 		);
 
 		ThrowIfFailed(
-			dxgiFactory->CreateSwapChainForHwnd(
+			dxgiFactory->CreateSwapChainForComposition(
 				_device._d3dDevice.Get(),
-				_hwnd,
 				&swapChainDesc,
-				nullptr,
 				nullptr,
 				&_swapChain
 			)
 		);
 
-		// Ensure that DXGI does not queue more than one frame at a time. This both reduces latency and
-		// ensures that the application will only render after each VSync, minimizing power consumption.
-		ThrowIfFailed(
-			dxgiDevice->SetMaximumFrameLatency( 1 )
-		);
+		// Create the DirectComposition device
+		ThrowIfFailed( DCompositionCreateDevice(
+			nullptr,
+			IID_PPV_ARGS( &_dcompDevice ) ) );
+
+		// Create a DirectComposition target associated with the window (pass in hWnd here)
+		ThrowIfFailed( _dcompDevice->CreateTargetForHwnd(
+			_hwnd,
+			true,
+			&_dcompTarget ) );
+
+		// Create a DirectComposition "visual"
+		ThrowIfFailed( _dcompDevice->CreateVisual( &_dcompVisual ) );
+
+		// Associate the visual with the swap chain
+		ThrowIfFailed( _dcompVisual->SetContent( _swapChain.Get() ) );
+
+		// Set the visual as the root of the DirectComposition target's composition tree
+		ThrowIfFailed( _dcompTarget->SetRoot( _dcompVisual.Get() ) );
+		ThrowIfFailed( _dcompDevice->Commit() );
 	}
 
 
@@ -652,7 +675,7 @@ void DeviceContext::BeginDraw(directui::Handle windowHandle)
 {
 	Resize( static_cast< HWND >( windowHandle ) );
 
-	_hdc = ::BeginPaint( _hwnd, &_ps );
+	//_hdc = ::BeginPaint( _hwnd, &_ps );
 
 	// Set the 3D rendering viewport to target the entire window.
 	_viewport = CD3D11_VIEWPORT(
@@ -672,7 +695,7 @@ void DeviceContext::EndDraw()
 	auto hr = _d2dContext->EndDraw();
 	Present();
 
-	::EndPaint( _hwnd, &_ps );
+	//::EndPaint( _hwnd, &_ps );
 }
 
 RectF DeviceContext::GetDrawRect()

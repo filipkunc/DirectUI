@@ -1,13 +1,12 @@
 #include "Window.h"
 #include "Application.h"
-#include "Message.h"
-#include "DrawMessage.h"
-#include "MouseMesage.h"
 #include "Graphics.h"
 #include "DxGraphics.h"
 
 #include <unordered_map>
+#include <algorithm>
 
+#define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h> // for Win32 API
 #include <windowsx.h> // for GET_X_LPARAM, GET_Y_LPARAM
@@ -28,9 +27,10 @@ private:
 	Window& _self;
 
 	HWND _hwnd{ nullptr };
+	WindowType _type{ WindowType::Main };
+	bool _activated{ false };
 
 	bool _willDestroyPostQuit{ false };
-	MessageHandler _messageHandler{ nullptr };
 	std::unique_ptr<graphics::DeviceContext> _deviceContext;
 
 	static const wchar_t* ClassName() { return  L"DirectUIWindow"; }
@@ -46,15 +46,16 @@ private:
 		switch ( type )
 		{
 			case WindowType::Main: return WindowStyles{ WS_OVERLAPPEDWINDOW, WS_EX_NOREDIRECTIONBITMAP | WS_EX_APPWINDOW };
-			case WindowType::Popup: return WindowStyles{ WS_POPUPWINDOW, WS_EX_NOREDIRECTIONBITMAP };
+			case WindowType::Popup: return WindowStyles{ WS_POPUP, WS_EX_NOREDIRECTIONBITMAP };
 			case WindowType::Child: return WindowStyles{ WS_CHILDWINDOW, WS_EX_NOREDIRECTIONBITMAP };
 			default: return WindowStyles{ 0, 0 };
 		}
 	}
 
 public:
-	Impl( Window& self, WindowType type, graphics::Device& device, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler )
+	Impl( Window& self, WindowType type, graphics::Device& device, const RectPx& rcPx, Window* parentWindow )
 		: _self{ self }
+		, _type{ type }
 	{
 		RegisterOnce();
 
@@ -64,8 +65,7 @@ public:
 		if ( parentWindow && parentWindow->_impl )
 			parentHwnd = parentWindow->_impl->_hwnd;
 
-		_messageHandler = messageHandler;
-		_hwnd = ::CreateWindowExW( styles.exStyle, ClassName(), name.c_str(), styles.style,
+		_hwnd = ::CreateWindowExW( styles.exStyle, ClassName(), nullptr, styles.style,
 			rcPx.x, rcPx.y, rcPx.w, rcPx.h,
 			parentHwnd, nullptr, ProgramInstance(), this );
 
@@ -140,11 +140,16 @@ private:
 		{
 			case WM_ACTIVATE:
 			{
-				MARGINS margins{ 0,0,1,0 };
-				auto hr = ::DwmExtendFrameIntoClientArea( _hwnd, &margins );
-				if ( SUCCEEDED( hr ) )
+				if ( !_activated && _type == WindowType::Main )
 				{
-					::SetWindowPos( _hwnd, nullptr, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED );
+					MARGINS margins{ 1,1,1,1 };
+					auto hr = ::DwmExtendFrameIntoClientArea( _hwnd, &margins );
+					if ( SUCCEEDED( hr ) )
+					{
+						::SetWindowPos( _hwnd, nullptr, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED );
+					}
+					_activated = true;
+					return 0;
 				}
 			} break;
 			case WM_ERASEBKGND:
@@ -153,36 +158,37 @@ private:
 			} break;
 			case WM_NCCALCSIZE:
 			{
-				if ( wParam == TRUE )
+				if ( wParam == TRUE && _type == WindowType::Main )
 				{
-					/*NCCALCSIZE_PARAMS *pncsp = reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
-
-					pncsp->rgrc[0].left   = pncsp->rgrc[0].left   + 0;
-					pncsp->rgrc[0].top    = pncsp->rgrc[0].top    + 0;
-					pncsp->rgrc[0].right  = pncsp->rgrc[0].right  - 0;
-					pncsp->rgrc[0].bottom = pncsp->rgrc[0].bottom - 0;*/
-
 					return 0;
 				}
 			} break;
 			case WM_NCHITTEST:
 			{
-				/*auto lRet = HitTestNCA( _hwnd, wParam, lParam );
+				int x = GET_X_LPARAM( lParam );
+				int y = GET_Y_LPARAM( lParam );
+				
+				auto rect = GetRect();
 
-				if ( lRet != HTNOWHERE )
+				if ( x > rect.x&& x < rect.x + rect.w )
 				{
-					return lRet;
-				}*/
+					if ( y > rect.y&& y < std::min( rect.y + rect.h, rect.y + 40 ) )
+					{
+						return HTCAPTION;
+					}
+				}
+
+				//return HTCLIENT;
+
+				//return HTNOWHERE;
 			} break;
 			case WM_PAINT:
 			{
 				_deviceContext->BeginDraw( _hwnd );
 
-				if ( _messageHandler )
-				{
-					_messageHandler( DrawMessage{ _self, *_deviceContext } );
-				}
-
+				if ( _self.OnDraw )
+					_self.OnDraw( _self, *_deviceContext );
+				
 				_deviceContext->EndDraw();
 
 				return 0;
@@ -223,7 +229,7 @@ private:
 					{ WM_XBUTTONDBLCLK,	{ MouseButton::Other,	MouseState::DoubleClick } },
 				};
 
-				if ( _messageHandler )
+				if ( _self.OnMouse )
 				{
 					const auto& mouse = mapMessageToMouse.at( message );
 					if ( mouse.state == MouseState::Down )
@@ -234,7 +240,7 @@ private:
 					{
 						::ReleaseCapture();
 					}
-					_messageHandler( MouseMessage{ _self, mouse.state, mouse.button, PointPx{ x, y } } );
+					_self.OnMouse( _self, mouse.state, mouse.button, PointPx{ x, y } );
 				}
 
 			} break;
@@ -302,9 +308,9 @@ private:
 	}
 };
 
-Window::Window( WindowType type, const String& name, const RectPx& rcPx, Window* parentWindow, MessageHandler messageHandler )
+Window::Window( WindowType type, const RectPx& rcPx, Window* parentWindow )
 {
-	_impl.reset( new Impl{ *this, type, Application::Instance()->GetDevice(), name, rcPx, parentWindow, messageHandler } );
+	_impl.reset( new Impl{ *this, type, Application::Instance()->GetDevice(), rcPx, parentWindow } );
 }
 
 Window::~Window()

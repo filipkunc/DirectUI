@@ -35,19 +35,10 @@
     <ClInclude Include="Graphics.h">
       <Filter>Source</Filter>
     </ClInclude>
-    <ClInclude Include="Message.h">
-      <Filter>Source</Filter>
-    </ClInclude>
     <ClInclude Include="CoreTypes.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="DxGraphics.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="DrawMessage.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="MouseMesage.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="Dpi.h">

@@ -31,9 +31,6 @@
     <ClInclude Include="Dpi.h" />
     <ClInclude Include="DxGraphics.h" />
     <ClInclude Include="Graphics.h" />
-    <ClInclude Include="Message.h" />
-    <ClInclude Include="DrawMessage.h" />
-    <ClInclude Include="MouseMesage.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
