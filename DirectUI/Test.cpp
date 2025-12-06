@@ -1,4 +1,4 @@
-#include "Window.h"
+﻿#include "Window.h"
 #include "Application.h"
 #include "Graphics.h"
 #include "Dpi.h"
@@ -17,147 +17,26 @@ void DrawThinBorder( DeviceContext& dc )
 	dc.DrawSolidRect( ColorF{ 0x5D5D63, 1 }, rect, strokeWidth );
 }
 
-enum class MenuState
-{
-	Normal,
-	Active,
-	Pressed
-};
-
-class MenuItem
-{
-private:
-	String _text;
-	RectF _rect;
-	std::unique_ptr<TextLayout> _textLayout;
-	MenuState _state{ MenuState::Normal };
-	std::unique_ptr<Window> _popup;
-public:
-	MenuItem( const String& text ) : _text{ text }, _rect{ 0, 0, 60, 20 }
-	{
-		auto& device = Application::Instance()->GetDevice();
-		auto textFormat = device.CreateTextFormat( L"Segoe UI", 12 );
-		_textLayout = device.CreateTextLayout( text, *textFormat, SizeF{ _rect.w, _rect.h } );
-		_textLayout->SetTextAlignment( TextAlignment::Center );
-		_textLayout->SetParagraphAlignment( ParagraphAlignment::Center );
-	}
-
-	RectF GetRect() const { return _rect; }
-	void SetRect( const RectF& rect ) { _rect = rect; }
-
-	MenuState GetState() const { return _state; }
-	void SetState( MenuState state ) { _state = state; }
-
-	/*void HandleMouse( const MouseMessage& mm, float dpi )
-	{
-		if ( mm.GetState() == MouseState::Down )
-		{
-			auto windowRect = mm.GetWindow().GetRect();
-			auto popupRect = ConvertRect( RectF{ _rect.x, _rect.y + _rect.h, 200, 200 }, dpi );
-			popupRect.x += windowRect.x;
-			popupRect.y += windowRect.y;
-			_popup.reset( new Window( WindowType::Popup, L"Popup", popupRect, nullptr, 
-				[] ( const Message& message ) {
-					if ( auto dm = message.As<DrawMessage>() )
-					{
-						auto& dc = dm->GetDeviceContext();
-						dc.Clear( ColorF{ 0x1B1B1C, 1 } );
-						DrawThinBorder( dc );
-					}
-				} ) );
-			_popup->Show();
-		}
-	}*/
-
-	void Draw( DeviceContext& dc )
-	{
-		auto brush = dc.CreateSolidBrush( ColorF{ 0x22'55'ff, 1 } );
-		switch ( _state )
-		{
-			case MenuState::Active:		dc.FillSolidRect( ColorF{ 0x3E3E40, 1 }, _rect );	break;
-			case MenuState::Pressed:	dc.FillSolidRect( ColorF{ 0x1B1B1C, 1 }, _rect );	break;
-			default:					dc.DrawSolidRect( ColorF{ 0x3E3E40, 1 }, _rect );	break;
-		}
-		dc.DrawTextLayout( *_textLayout, *brush, PointF{ _rect.x, _rect.y } );
-	}
-};
-
-class MenuBar
-{
-private:
-	std::vector<MenuItem> _items;
-public:
-	void Append( MenuItem&& item )
-	{
-		_items.push_back( std::move( item ) );
-	}
-
-	void Layout()
-	{
-		PointF pos{ 0, 0 };
-		for ( auto& item : _items )
-		{
-			auto rect = item.GetRect();
-			rect.x = pos.x;
-			rect.y = pos.y;
-			item.SetRect( rect );
-			pos.x += rect.w;
-		}
-	}
-
-	/*void HandleMouse( const MouseMessage& mm, float dpi )
-	{
-		auto mousePos = ConvertPoint( mm.GetPosition(), dpi );
-		MenuItem* activeItem = nullptr;
-		for ( auto& item : _items )
-		{
-			item.SetState( MenuState::Normal );
-			if ( activeItem == nullptr && item.GetRect().HasPoint( mousePos ) )
-			{
-				activeItem = &item;
-			}
-		}
-
-		if ( activeItem )
-		{
-			activeItem->SetState( MenuState::Active );
-			activeItem->HandleMouse( mm, dpi );
-		}
-	}*/
-
-	void Draw( DeviceContext& dc )
-	{
-		for ( auto& item : _items )
-		{
-			item.Draw( dc );
-		}
-	}
-};
-
 int main()
 {
 	Application app;
 
-	MenuBar menuBar;
-	menuBar.Append( MenuItem{ L"File" } );
-	menuBar.Append( MenuItem{ L"Edit" } );
-	menuBar.Append( MenuItem{ L"View" } );
-	menuBar.Append( MenuItem{ L"Project" } );
-	menuBar.Layout();
+	auto textPos = PointF{ 20.0f, 20.0f };
 
-	PointPx dragStartPosPx;
-	bool isDragging{ false };
+	auto& device = app.GetDevice();
+	auto textLayout = device.CreateTextLayout(L"DirectUI 👩‍🦰 Test 🎶 Application", *device.CreateTextFormat(L"Segoe UI", 58.0f), SizeF{ 600.0f, 100.0f });
 
 	Window mainWindow{ WindowType::Main, ConvertRect( RectF{ 200, 200, 640, 480 }, GetSystemDpi() ), nullptr };
 
-	mainWindow.OnDraw = [&menuBar] ( Window& w, DeviceContext& dc ) {
-		dc.Clear( ColorF{ 0x2D2D30, 0.1f } );
-		menuBar.Draw( dc );
+	mainWindow.OnDraw = [&] ( Window& w, DeviceContext& dc ) {
+		dc.Clear( ColorF{ 0x2D2D30, 0.5f } );
 		DrawThinBorder( dc );
+		dc.DrawTextLayout(*textLayout, *dc.CreateSolidBrush(ColorF{ 1, 1, 1, 1 }), textPos);
 	};
 
-	mainWindow.OnMouse = [&menuBar] ( Window& w, MouseState state, MouseButton button, PointPx position ) {
-
+	mainWindow.OnMouse = [&] ( Window& w, MouseState state, MouseButton button, PointPx position ) {
+		textPos = ConvertPoint(position, w.GetDpi());
+		w.Redraw();
 	};
 
 		//[&] ( const Message& message ) {

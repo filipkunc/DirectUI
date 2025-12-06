@@ -14,7 +14,7 @@
 #include <versionhelpers.h>
 
 #ifdef _MSC_VER
-#pragma comment(linker, "/subsystem:windows /ENTRY:mainCRTStartup")
+#pragma comment(linker, "/ENTRY:mainCRTStartup")
 #pragma comment(lib, "dwmapi.lib")
 #endif
 
@@ -28,7 +28,6 @@ private:
 
 	HWND _hwnd{ nullptr };
 	WindowType _type{ WindowType::Main };
-	bool _activated{ false };
 
 	bool _willDestroyPostQuit{ false };
 	std::unique_ptr<graphics::DeviceContext> _deviceContext;
@@ -130,57 +129,11 @@ private:
 			return 0;
 		}
 
-		LRESULT result = 0;
-		if ( ::DwmDefWindowProc( _hwnd, message, wParam, lParam, &result ) )
-		{
-			return result;
-		}
-
 		switch ( message )
 		{
-			case WM_ACTIVATE:
-			{
-				if ( !_activated && _type == WindowType::Main )
-				{
-					MARGINS margins{ 1,1,1,1 };
-					auto hr = ::DwmExtendFrameIntoClientArea( _hwnd, &margins );
-					if ( SUCCEEDED( hr ) )
-					{
-						::SetWindowPos( _hwnd, nullptr, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED );
-					}
-					_activated = true;
-					return 0;
-				}
-			} break;
 			case WM_ERASEBKGND:
 			{
 				return 1;
-			} break;
-			case WM_NCCALCSIZE:
-			{
-				if ( wParam == TRUE && _type == WindowType::Main )
-				{
-					return 0;
-				}
-			} break;
-			case WM_NCHITTEST:
-			{
-				int x = GET_X_LPARAM( lParam );
-				int y = GET_Y_LPARAM( lParam );
-				
-				auto rect = GetRect();
-
-				if ( x > rect.x&& x < rect.x + rect.w )
-				{
-					if ( y > rect.y&& y < std::min( rect.y + rect.h, rect.y + 40 ) )
-					{
-						return HTCAPTION;
-					}
-				}
-
-				//return HTCLIENT;
-
-				//return HTNOWHERE;
 			} break;
 			case WM_PAINT:
 			{
